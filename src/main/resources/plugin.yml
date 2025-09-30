@@ -1,0 +1,6 @@
+name: PacketBlocks
+version: '1.0.0'
+main: net.bitbylogic.packetblocks.PacketBlocks
+api-version: '1.21'
+authors: [ BitByLogic ]
+depend: [ "packetevents" ]
