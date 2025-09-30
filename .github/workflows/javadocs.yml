@@ -22,8 +22,8 @@ jobs:
       - name: Build Javadocs
         run: mvn javadoc:javadoc
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v6
+      - name: Deploy Javadocs to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v5
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: target/site/apidocs
+          publish_dir: ./target/site/apidocs
