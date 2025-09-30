@@ -19,11 +19,24 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      # Build dependencies
+      - name: Build bits-utils
+        run: |
+          git clone https://github.com/BitByLogics/Bits-Utils.git
+          cd Bits-Utils
+          mvn clean install
+
+      # Build PacketBlocks
+      - name: Build PacketBlocks
+        run: mvn clean install
+
+      # Generate Javadocs
       - name: Build Javadocs
         run: mvn javadoc:javadoc
 
-      - name: Deploy
+      # Deploy to GitHub Pages
+      - name: Deploy Javadocs
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
+          publish_dir: ./target/site/apidocs
