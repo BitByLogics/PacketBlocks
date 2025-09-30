@@ -70,6 +70,13 @@ packetBlock.simulateBreak(player);
 
 ---
 
+## 📖 Documentation
+
+Full API documentation for **PacketBlocks** is available online:  
+[View Javadocs](https://bitbylogics.github.io/PacketBlocks/)
+
+---
+
 ## ⚡ Simulate breaks & drops
 
 `simulateBreak(...)` triggers `PacketBlockBreakEvent`. This event:
