@@ -1,8 +1,7 @@
 net.bitbylogic.packetblocks
 net.bitbylogic.packetblocks.adapter
-net.bitbylogic.packetblocks.data
+net.bitbylogic.packetblocks.block
 net.bitbylogic.packetblocks.event
 net.bitbylogic.packetblocks.listener
-net.bitbylogic.packetblocks.manager
 net.bitbylogic.packetblocks.task
 net.bitbylogic.packetblocks.util
