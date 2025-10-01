@@ -61,6 +61,9 @@ PacketBlockManager blockManager = PacketBlocks.getInstance().getBlockManager();
 // Create the packet block
 PacketBlock packetBlock = blockManager.createBlock(loc, blockData);
 
+// Add permission view requirement
+packetBlock.addViewCondition(player -> player.hasPermission("packetblocks.view"));
+
 // Make it visible to a player
 packetBlock.addAndUpdateViewer(player);
 
