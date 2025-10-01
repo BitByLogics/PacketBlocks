@@ -55,8 +55,11 @@ Replace `1.0.0` with the actual project version.
 Location loc = player.getLocation().add(0, 0, 1);
 BlockData blockData = Bukkit.createBlockData(Material.DIAMOND_BLOCK);
 
+// Get the block manager
+PacketBlockManager blockManager = PacketBlocks.getInstance().getBlockManager();
+
 // Create the packet block
-PacketBlock packetBlock = new PacketBlock(loc, blockData);
+PacketBlock packetBlock = blockManager.createBlock(loc, blockData);
 
 // Make it visible to a player
 packetBlock.addAndUpdateViewer(player);
