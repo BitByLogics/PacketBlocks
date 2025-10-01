@@ -49,10 +49,25 @@ public class BoundingBoxes {
         }
     }
 
+    /**
+     * Retrieves the {@link BoundingBox} associated with the specified {@link Material}.
+     *
+     * @param material the material for which the bounding box needs to be retrieved; must not be null
+     * @return the bounding box corresponding to the given material, or null if no bounding box is defined
+     */
     public static BoundingBox getBox(@NonNull Material material) {
         return BOXES.get(material);
     }
 
+    /**
+     * Retrieves a {@link BoundingBox} at the specified location for the given material.
+     * The method shifts the bounding box of the material to align it with the block location.
+     * If the material does not have a bounding box defined, the method returns null.
+     *
+     * @param material the material whose bounding box is to be retrieved, must not be null
+     * @param location the location where the bounding box is to be positioned, must not be null
+     * @return the bounding box of the material at the specified location, or null if the material does not have a bounding box
+     */
     public static BoundingBox getBoxAt(@NonNull Material material, @NonNull Location location) {
         BoundingBox boundingBox = getBox(material);
 

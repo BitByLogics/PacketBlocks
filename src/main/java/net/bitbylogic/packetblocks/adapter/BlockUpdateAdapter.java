@@ -8,8 +8,8 @@ import com.github.retrooper.packetevents.util.Vector3i;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBlockChange;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerMultiBlockChange;
 import lombok.RequiredArgsConstructor;
-import net.bitbylogic.packetblocks.manager.PacketBlockManager;
-import net.bitbylogic.packetblocks.data.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlockManager;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
@@ -26,7 +26,6 @@ public class BlockUpdateAdapter implements PacketListener {
     public void onPacketSend(PacketSendEvent event) {
         Player player = event.getPlayer();
 
-        // Handle single block change
         if (event.getPacketType() == PacketType.Play.Server.BLOCK_CHANGE) {
             WrapperPlayServerBlockChange packet = new WrapperPlayServerBlockChange(event);
             Vector3i position = packet.getBlockPosition();
@@ -47,7 +46,6 @@ public class BlockUpdateAdapter implements PacketListener {
             }
         }
 
-        // Handle multi block change
         else if (event.getPacketType() == PacketType.Play.Server.MULTI_BLOCK_CHANGE) {
             WrapperPlayServerMultiBlockChange packet = new WrapperPlayServerMultiBlockChange(event);
 
@@ -63,7 +61,7 @@ public class BlockUpdateAdapter implements PacketListener {
                             WrappedBlockState.getByString(pb.get().getBlockData().getAsString()),
                             block.getX(), block.getY(), block.getZ()));
                 } else {
-                    modifiedBlocks.add(block); // keep vanilla
+                    modifiedBlocks.add(block);
                 }
             }
 

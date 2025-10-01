@@ -1,7 +1,7 @@
 package net.bitbylogic.packetblocks.event;
 
 import lombok.Getter;
-import net.bitbylogic.packetblocks.data.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlock;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
@@ -9,6 +9,16 @@ import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;
 
+/**
+ * Called when a player starts breaking a {@link PacketBlock}.
+ *
+ * <p>This event is triggered as soon as the player begins
+ * interacting with the block (e.g. starts mining it),
+ * before the block is actually broken.
+ *
+ * <p>Handlers may cancel this event to prevent the player
+ * from starting the break action.
+ */
 @Getter
 public class PacketBlockStartBreakEvent extends Event implements Cancellable {
 

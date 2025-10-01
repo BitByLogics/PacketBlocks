@@ -1,10 +1,9 @@
-package net.bitbylogic.packetblocks.manager;
+package net.bitbylogic.packetblocks.block;
 
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import net.bitbylogic.packetblocks.PacketBlocks;
-import net.bitbylogic.packetblocks.data.PacketBlock;
 import net.bitbylogic.utils.location.ChunkPosition;
 import net.bitbylogic.utils.location.LocationUtil;
 import org.bukkit.Bukkit;
@@ -30,6 +29,19 @@ public class PacketBlockManager {
 
     private final PacketBlocks plugin;
 
+    /**
+     * Creates a new {@link PacketBlock} instance at the specified location with the given block data.
+     * The created block is registered within the internally managed collection, ensuring it is
+     * appropriately tracked for further operations.
+     *
+     * If the block already exists in the specified chunk, no duplicate will be created,
+     * and the existing instance will be returned.
+     *
+     * @param location the location of the block to be created; must not be null
+     * @param blockData the data of the block to be created; must not be null
+     * @return the newly created {@link PacketBlock} instance, or the existing instance if one already exists at the location;
+     *         returns null if the location's world is null
+     */
     public PacketBlock createBlock(@NonNull Location location, @NonNull BlockData blockData) {
         World world = location.getWorld();
 
@@ -61,6 +73,14 @@ public class PacketBlockManager {
         return packetBlock;
     }
 
+    /**
+     * Removes the specified {@link PacketBlock} from the blockLocations map and updates its visual
+     * state for all associated viewers. If the {@link PacketBlock} exists in any chunk's block list,
+     * it is removed from that list, and its associated viewers are sent a block update to reset the
+     * affected block's state.
+     *
+     * @param packetBlock the {@link PacketBlock} to be removed; must not be null
+     */
     public void removeBlock(@NonNull PacketBlock packetBlock) {
         for (Map.Entry<ChunkPosition, List<PacketBlock>> entry : blockLocations.entrySet()) {
             List<PacketBlock> blocks = entry.getValue();
@@ -85,6 +105,14 @@ public class PacketBlockManager {
         });
     }
 
+    /**
+     * Removes {@link PacketBlock} instances from the managed collection if they satisfy a specified condition.
+     * The condition is defined by the provided {@link Predicate}.
+     * Additionally, it schedules a visual update for players viewing the affected blocks.
+     *
+     * @param removePredicate the condition used to determine which {@link PacketBlock} instances should be removed;
+     *                        must not be null.
+     */
     public void removeIf(Predicate<PacketBlock> removePredicate) {
         for (Map.Entry<ChunkPosition, List<PacketBlock>> entry : blockLocations.entrySet()) {
             List<PacketBlock> blocks = entry.getValue();
@@ -106,6 +134,13 @@ public class PacketBlockManager {
         }
     }
 
+    /**
+     * Retrieves an {@link Optional} of {@link PacketBlock} located at the specified {@link Location}.
+     * If the provided location's world is null or no matching block exists, an empty {@link Optional} is returned.
+     *
+     * @param location the {@link Location} at which to find the {@link PacketBlock}; must not be null
+     * @return an {@link Optional} containing the matching {@link PacketBlock}, or an empty {@link Optional} if none is found
+     */
     public Optional<PacketBlock> getBlock(@NonNull Location location) {
         World world = location.getWorld();
 
@@ -118,6 +153,13 @@ public class PacketBlockManager {
                 LocationUtil.matches(loc.getLocation().toBlockLocation(), location.toBlockLocation())).findFirst();
     }
 
+    /**
+     * Retrieves a list of {@link PacketBlock} instances associated with the specified world.
+     * Only blocks that belong to the given world will be included in the returned list.
+     *
+     * @param world the world for which the packet blocks are being queried; must not be null
+     * @return a list of {@link PacketBlock} instances that exist in the specified world
+     */
     public List<PacketBlock> getBlocks(@NonNull World world) {
         List<PacketBlock> blocks = new ArrayList<>();
 
@@ -136,11 +178,28 @@ public class PacketBlockManager {
         return blocks;
     }
 
+    /**
+     * Retrieves a list of {@link PacketBlock} instances located within the specified chunk
+     * in the given world. The chunk is identified by its X and Z coordinates.
+     *
+     * @param world the world in which the blocks are being queried; must not be null
+     * @param chunkX the X-coordinate of the chunk
+     * @param chunkZ the Z-coordinate of the chunk
+     * @return a list of {@link PacketBlock} instances within the specified chunk,
+     *         or an empty list if no blocks are found
+     */
     public List<PacketBlock> getBlocks(@NonNull World world, int chunkX, int chunkZ) {
         ChunkPosition chunkIdentifier = new ChunkPosition(world.getName(), chunkX, chunkZ);
         return blockLocations.getOrDefault(chunkIdentifier, new ArrayList<>());
     }
 
+    /**
+     * Retrieves a list of {@link PacketBlock} instances that are visible to the specified player.
+     * These blocks are determined based on the player's unique identifier and their visibility status.
+     *
+     * @param player the player for whom the visible blocks are being queried; must not be null
+     * @return a list of {@link PacketBlock} instances that the specified player can view
+     */
     public List<PacketBlock> getBlocksByViewer(@NonNull Player player) {
         List<PacketBlock> blocks = new ArrayList<>();
 
@@ -157,6 +216,15 @@ public class PacketBlockManager {
         return blocks;
     }
 
+    /**
+     * Retrieves a list of {@link PacketBlock} instances that are visible to the specified player
+     * and contain the specified metadata key.
+     *
+     * @param player the player whose visible blocks are being queried; must not be null.
+     * @param metaKey the metadata key that the blocks must have to be included in the results; must not be null.
+     * @return a list of {@link PacketBlock} instances that are both visible to the specified player
+     *         and contain the specified metadata key.
+     */
     public List<PacketBlock> getBlocksByViewerWithMeta(@NonNull Player player, @NonNull String metaKey) {
         List<PacketBlock> blocks = new ArrayList<>();
 
@@ -173,6 +241,12 @@ public class PacketBlockManager {
         return blocks;
     }
 
+    /**
+     * Retrieves a list of {@link PacketBlock} instances that contain the specified metadata key.
+     *
+     * @param key the metadata key to filter blocks by; must not be null.
+     * @return a list of {@link PacketBlock} instances that contain the specified metadata key.
+     */
     public List<PacketBlock> getBlocksByMetadata(@NonNull String key) {
         List<PacketBlock> blocks = new ArrayList<>();
 
@@ -189,6 +263,14 @@ public class PacketBlockManager {
         return blocks;
     }
 
+    /**
+     * Retrieves a list of {@link PacketBlock} instances that intersect with the specified
+     * bounding box within a given world.
+     *
+     * @param world the world in which the blocks are being queried; must not be null
+     * @param boundingBox the bounding box used to filter the blocks; must not be null
+     * @return a list of {@link PacketBlock} instances that overlap with the specified bounding box
+     */
     public List<PacketBlock> getHitBlocks(@NonNull World world, @NonNull BoundingBox boundingBox) {
         List<PacketBlock> blocks = new ArrayList<>();
 
@@ -205,6 +287,13 @@ public class PacketBlockManager {
         return blocks;
     }
 
+    /**
+     * Retrieves all chunks that intersect with the provided bounding box in the given world.
+     *
+     * @param world the world in which to search for chunks, must not be null
+     * @param box the bounding box to define the search area, must not be null
+     * @return a set of chunks that intersect with the specified bounding box
+     */
     public Set<Chunk> getChunksInBoundingBox(World world, BoundingBox box) {
         Set<Chunk> chunks = new HashSet<>();
 
@@ -226,6 +315,15 @@ public class PacketBlockManager {
         return chunks;
     }
 
+    /**
+     * Retrieves a list of {@link PacketBlock} instances that are visible to the specified player
+     * and overlap with the given bounding box.
+     *
+     * @param player the player whose visible blocks are being queried, must not be null
+     * @param boundingBox the bounding box used to filter the blocks, must not be null
+     * @return a list of {@link PacketBlock} instances that are both visible to the player and
+     *         intersect with the specified bounding box
+     */
     public List<PacketBlock> getHitBlocksByViewer(@NonNull Player player, @NonNull BoundingBox boundingBox) {
         List<PacketBlock> blocks = new ArrayList<>();
 
@@ -248,6 +346,16 @@ public class PacketBlockManager {
         return blocks;
     }
 
+    /**
+     * Retrieves a list of {@link PacketBlock} instances that are within a specified
+     * bounding box, are visible to the specified player, and contain the given metadata key.
+     *
+     * @param player the player for whom the blocks' visibility is checked; must not be null.
+     * @param boundingBox the bounding box defining the area to search for blocks; must not be null.
+     * @param metaKey the metadata key that the blocks must have to be included in the results; must not be null.
+     * @return a list of {@link PacketBlock} instances satisfying the conditions of being visible
+     *         to the player, located within the bounding box, and containing the specified metadata key.
+     */
     public List<PacketBlock> getHitBlocksByViewerWithMeta(@NonNull Player player, @NonNull BoundingBox boundingBox, @NonNull String metaKey) {
         List<PacketBlock> blocks = new ArrayList<>();
 
@@ -274,10 +382,26 @@ public class PacketBlockManager {
         return blocks;
     }
 
+    /**
+     * Updates all visually modified blocks for the specified player in their visible region.
+     * This method uses the player's current view to determine which blocks to update.
+     *
+     * @param player the player for whom the block updates should be performed; must not be null
+     */
     public void updateBlocks(@NonNull Player player) {
         updateBlocksWithMeta(player, null);
     }
 
+    /**
+     * Updates the visual state of blocks for a specific player, optionally filtering
+     * by metadata. If a metadata key is provided, only blocks associated with that
+     * metadata will be updated. If the metadata key is null, all relevant blocks for
+     * the player will be updated.
+     *
+     * @param player the player for whom the blocks' visual states are being updated
+     * @param metaKey an optional metadata key used to filter the blocks being updated;
+     *                if null, all relevant blocks are updated
+     */
     public void updateBlocksWithMeta(@NonNull Player player, @Nullable String metaKey) {
         Set<BlockState> states = new HashSet<>();
 

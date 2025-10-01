@@ -8,8 +8,8 @@ import com.github.retrooper.packetevents.protocol.world.chunk.BaseChunk;
 import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChunkData;
 import lombok.RequiredArgsConstructor;
-import net.bitbylogic.packetblocks.manager.PacketBlockManager;
-import net.bitbylogic.packetblocks.data.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlockManager;
 import org.bukkit.Location;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
@@ -45,7 +45,6 @@ public class ChunkLoadAdapter implements PacketListener {
             int y = loc.getBlockY();
             int zInChunk = loc.getBlockZ() & 0xF;
 
-            // Compute chunk section index based on world min height
             int sectionIndex = (y >> 4) + (absMinHeight >> 4);
             int yInSection = y & 0xF;
 
@@ -57,7 +56,6 @@ public class ChunkLoadAdapter implements PacketListener {
             BlockData bukkitData = packetBlock.getBlockState(player).getBlockData();
             WrappedBlockState wrappedState = WrappedBlockState.getByString(bukkitData.getAsString());
 
-            // Set block using PacketEvents' method
             section.set(
                     PacketEvents.getAPI().getServerManager().getVersion().toClientVersion(),
                     xInChunk,

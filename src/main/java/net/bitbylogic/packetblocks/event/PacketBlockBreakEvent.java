@@ -2,7 +2,7 @@ package net.bitbylogic.packetblocks.event;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.bitbylogic.packetblocks.data.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlock;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
@@ -11,6 +11,18 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
+/**
+ * Called when a {@link PacketBlock} is broken by a player.
+ *
+ * <p>This event is fired by the PacketBlocks plugin whenever a
+ * player breaks a {@link PacketBlock} instance in the world.
+ *
+ * <p>Handlers may choose to cancel this event to prevent the block
+ * from being broken.
+ *
+ * <p>In addition, handlers may modify whether items are dropped
+ * and whether the block updates its state after being broken.
+ */
 @Getter
 public class PacketBlockBreakEvent extends Event implements Cancellable {
 

@@ -3,7 +3,7 @@ package net.bitbylogic.packetblocks.task;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
-import net.bitbylogic.packetblocks.data.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlock;
 
 @Getter
 @Setter

@@ -1,8 +1,8 @@
 package net.bitbylogic.packetblocks.listener;
 
 import lombok.RequiredArgsConstructor;
-import net.bitbylogic.packetblocks.manager.PacketBlockManager;
-import net.bitbylogic.packetblocks.data.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlockManager;
+import net.bitbylogic.packetblocks.block.PacketBlock;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;

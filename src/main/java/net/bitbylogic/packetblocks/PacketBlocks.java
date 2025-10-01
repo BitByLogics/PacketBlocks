@@ -9,7 +9,7 @@ import net.bitbylogic.packetblocks.adapter.BlockPlaceAdapter;
 import net.bitbylogic.packetblocks.adapter.BlockUpdateAdapter;
 import net.bitbylogic.packetblocks.adapter.ChunkLoadAdapter;
 import net.bitbylogic.packetblocks.listener.PacketBlockListener;
-import net.bitbylogic.packetblocks.manager.PacketBlockManager;
+import net.bitbylogic.packetblocks.block.PacketBlockManager;
 import net.bitbylogic.packetblocks.util.BoundingBoxes;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
