@@ -14,6 +14,7 @@ import org.bukkit.Location;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -31,7 +32,7 @@ public class ChunkLoadAdapter implements PacketListener {
         int chunkX = packet.getColumn().getX();
         int chunkZ = packet.getColumn().getZ();
 
-        List<PacketBlock> blocks = manager.getBlocks(player.getWorld(), chunkX, chunkZ);
+        List<PacketBlock> blocks = new ArrayList<>(manager.getBlocks(player.getWorld(), chunkX, chunkZ));
         if (blocks.isEmpty()) return;
 
         BaseChunk[] sections = packet.getColumn().getChunks();
