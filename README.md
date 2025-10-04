@@ -24,28 +24,36 @@ PacketBlocks lets you display blocks to players without modifying the real world
 
 ## 🛠 Installation
 
-This project is **not published to a repository host**. You must clone it and install it manually:
-
-```bash
-git clone https://github.com/BitByLogics/PacketBlocks.git
-cd PacketBlocks
-mvn clean install
-```
-
-This installs the library into your local Maven repository (`~/.m2/repository`).
-
-Add it as a dependency in your plugin project:
-
+**Maven:**
 ```xml
-<dependency>
-    <groupId>net.bitbylogic</groupId>
-    <artifactId>packetblocks</artifactId>
-    <version>1.0.0</version>
-    <scope>provided</scope>
-</dependency>
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+
+<dependencies>
+    <dependency>
+        <groupId>com.github.BitByLogics</groupId>
+        <artifactId>PacketBlocks</artifactId>
+        <version>1.0.1</version>
+    </dependency>
+</dependencies>
 ```
 
-Replace `1.0.0` with the actual project version.
+**Gradle:**
+```groovy
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    implementation 'com.github.BitByLogics:PacketBlocks:1.0.1'
+}
+```
+
+Replace `1.0.1` with the actual project version.
 
 ---
 
