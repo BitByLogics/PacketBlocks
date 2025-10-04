@@ -38,6 +38,7 @@ PacketBlocks lets you display blocks to players without modifying the real world
         <groupId>com.github.BitByLogics</groupId>
         <artifactId>PacketBlocks</artifactId>
         <version>1.0.1</version>
+        <scope>provided</scope>
     </dependency>
 </dependencies>
 ```
@@ -49,7 +50,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.BitByLogics:PacketBlocks:1.0.1'
+    compileOnly 'com.github.BitByLogics:PacketBlocks:1.0.1'
 }
 ```
 
