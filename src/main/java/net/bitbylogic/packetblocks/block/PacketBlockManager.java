@@ -150,7 +150,7 @@ public class PacketBlockManager {
 
         Chunk chunk = location.getChunk();
         return new ArrayList<>(getBlocks(world, chunk.getX(), chunk.getZ())).stream()
-                .filter(loc -> loc.getLocation() != null && LocationUtil.matches(loc.getLocation().toBlockLocation(), location.toBlockLocation()))
+                .filter(loc -> loc != null && loc.getLocation() != null && LocationUtil.matches(loc.getLocation().toBlockLocation(), location.toBlockLocation()))
                 .findFirst();
     }
 
@@ -166,7 +166,7 @@ public class PacketBlockManager {
 
         blockLocations.values().forEach(packetBlocks -> {
             packetBlocks.forEach(block -> {
-                if(block.getLocation() == null) {
+                if(block == null || block.getLocation() == null) {
                     return;
                 }
 
