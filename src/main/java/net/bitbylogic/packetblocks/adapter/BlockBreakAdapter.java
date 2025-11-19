@@ -60,7 +60,7 @@ public class BlockBreakAdapter implements PacketListener {
             case CANCELLED_DIGGING -> {
                 if (breakSpeed != -1) task.removeEntry(player);
             }
-            case FINISHED_DIGGING -> handleStopDestroy(player, packetBlock, location, packet);
+            case FINISHED_DIGGING -> handleStopDestroy(player, packetBlock, location);
         }
     }
 
@@ -83,7 +83,7 @@ public class BlockBreakAdapter implements PacketListener {
             }
 
             if (player.getGameMode() == GameMode.CREATIVE || (breakSpeed == -1 && vanillaHardness == 0)) {
-                handleStopDestroy(player, packetBlock, location, packet);
+                handleStopDestroy(player, packetBlock, location);
                 return;
             }
 
@@ -93,8 +93,7 @@ public class BlockBreakAdapter implements PacketListener {
 
     private void handleStopDestroy(@NonNull Player player,
                                    @NonNull PacketBlock packetBlock,
-                                   @NonNull Location location,
-                                   @NonNull WrapperPlayClientPlayerDigging packet) {
+                                   @NonNull Location location) {
 
         Bukkit.getScheduler().runTask(PacketBlocks.getInstance(), () -> {
             ItemStack heldItem = player.getInventory().getItemInMainHand();
