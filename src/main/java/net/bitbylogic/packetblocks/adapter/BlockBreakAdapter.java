@@ -78,7 +78,6 @@ public class BlockBreakAdapter implements PacketListener {
             if (breakStartEvent.isCancelled()) {
                 cancelledBreaks.add(player.getUniqueId());
                 packetBlock.sendUpdate(player);
-                PacketEvents.getAPI().getPlayerManager().receivePacket(player, packet);
                 return;
             }
 
