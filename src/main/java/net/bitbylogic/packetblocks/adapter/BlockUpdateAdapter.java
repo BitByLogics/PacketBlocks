@@ -42,7 +42,7 @@ public class BlockUpdateAdapter implements PacketListener {
 
             if (optionalBlock.isPresent() && optionalBlock.get().isViewer(player)) {
                 PacketBlock block = optionalBlock.get();
-                packet.setBlockState(WrappedBlockState.getByString(block.getBlockData().getAsString()));
+                packet.setBlockState(WrappedBlockState.getByString(block.getBlockState(player).getBlockData().getAsString()));
             }
         }
 
@@ -58,7 +58,7 @@ public class BlockUpdateAdapter implements PacketListener {
 
                 if (pb.isPresent() && pb.get().isViewer(player)) {
                     modifiedBlocks.add(new WrapperPlayServerMultiBlockChange.EncodedBlock(
-                            WrappedBlockState.getByString(pb.get().getBlockData().getAsString()),
+                            WrappedBlockState.getByString(pb.get().getBlockState(player).getBlockData().getAsString()),
                             block.getX(), block.getY(), block.getZ()));
                 } else {
                     modifiedBlocks.add(block);
