@@ -3,6 +3,7 @@ package net.bitbylogic.packetblocks.event;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.bitbylogic.packetblocks.block.PacketBlock;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
@@ -20,7 +21,7 @@ import org.jetbrains.annotations.NotNull;
  * interaction behavior to packet blocks.
  *
  * <p>The event provides access to the player, the interaction action,
- * the hand used, and the packet block that was interacted with.
+ * the hand used, the hit block face and the packet block that was interacted with.
  */
 @Getter
 @RequiredArgsConstructor
@@ -31,6 +32,7 @@ public class PacketBlockInteractEvent extends Event {
     private final Player player;
     private final Action action;
     private final EquipmentSlot hand;
+    private final BlockFace blockFace;
     private final PacketBlock block;
 
     public static HandlerList getHandlerList() {

@@ -72,7 +72,8 @@ public class PacketBlockListener implements Listener {
             return;
         }
 
-        PacketBlockInteractEvent interactEvent = new PacketBlockInteractEvent(player, event.getAction(), event.getHand(), manager.getBlock(result.getHitBlock().getLocation()).get());
+        PacketBlockInteractEvent interactEvent = new PacketBlockInteractEvent(player, event.getAction(), event.getHand(),
+                result.getHitBlockFace(), manager.getBlock(result.getHitBlock().getLocation()).get());
         Bukkit.getPluginManager().callEvent(interactEvent);
     }
 
