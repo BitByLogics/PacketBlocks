@@ -1,0 +1,81 @@
+name: 🐛 Bug Report
+description: Report a reproducible issue or unexpected behavior.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill out all required sections so we can fix it quickly.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Brief description of the bug.
+      placeholder: "XYZ crashes when clicking ABC"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Provide every step needed to reproduce the issue.
+      placeholder: |
+        1. Implement...
+        2. Click...
+        3. Observe...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened?
+      placeholder: "The API should do X instead of Y."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: "Error occurred..., nothing happened..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Code / Logs
+      description: Paste code or attach logs if applicable.
+      render: shell
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Low (minor inconvenience)
+        - Medium (affects usability)
+        - High (blocks main functionality)
+        - Critical (crash, data loss)
+      default: 1
+
+  - type: input
+    id: version
+    attributes:
+      label: Version / Build
+      placeholder: "v1.2.3"
+      description: The version the bug occurred on.
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional Notes
+      description: Anything else that might help?
