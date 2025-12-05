@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.block.Action;
+import org.bukkit.inventory.EquipmentSlot;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -19,7 +20,7 @@ import org.jetbrains.annotations.NotNull;
  * interaction behavior to packet blocks.
  *
  * <p>The event provides access to the player, the interaction action,
- * and the packet block that was interacted with.
+ * the hand used, and the packet block that was interacted with.
  */
 @Getter
 @RequiredArgsConstructor
@@ -29,6 +30,7 @@ public class PacketBlockInteractEvent extends Event {
 
     private final Player player;
     private final Action action;
+    private final EquipmentSlot hand;
     private final PacketBlock block;
 
     public static HandlerList getHandlerList() {
