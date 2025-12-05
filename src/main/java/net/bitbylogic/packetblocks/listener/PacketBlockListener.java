@@ -1,16 +1,22 @@
 package net.bitbylogic.packetblocks.listener;
 
 import lombok.RequiredArgsConstructor;
-import net.bitbylogic.packetblocks.block.PacketBlockManager;
 import net.bitbylogic.packetblocks.block.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlockManager;
+import net.bitbylogic.packetblocks.event.PacketBlockInteractEvent;
+import net.bitbylogic.packetblocks.util.PacketBlockUtil;
+import org.bukkit.Bukkit;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.util.RayTraceResult;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -53,6 +59,21 @@ public class PacketBlockListener implements Listener {
         manager.getBlocks(player.getWorld()).stream()
                 .filter(PacketBlock::isAddViewerOnJoin)
                 .forEach(packetBlock -> packetBlock.removeViewer(player));
+    }
+
+    @EventHandler
+    public void onInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        double interactRange = player.getAttribute(Attribute.BLOCK_INTERACTION_RANGE).getBaseValue();
+
+        RayTraceResult result = PacketBlockUtil.rayTrace(event.getPlayer(), interactRange);
+
+        if (result == null || result.getHitBlock() == null || manager.getBlock(result.getHitBlock().getLocation()).isEmpty()) {
+            return;
+        }
+
+        PacketBlockInteractEvent interactEvent = new PacketBlockInteractEvent(player, event.getAction(), manager.getBlock(result.getHitBlock().getLocation()).get());
+        Bukkit.getPluginManager().callEvent(interactEvent);
     }
 
 }
