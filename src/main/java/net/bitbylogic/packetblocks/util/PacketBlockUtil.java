@@ -43,9 +43,9 @@ public class PacketBlockUtil {
      * @return a RayTraceResult containing information about the hit block and location, or null if no block was hit
      */
     public static RayTraceResult rayTrace(Player player, double range) {
-        PacketBlockManager PacketBlockManager = PacketBlocks.getInstance().getBlockManager();
+        PacketBlockManager blockManager = PacketBlocks.getInstance().getBlockManager();
 
-        Location eye = player.getEyeLocation();
+        Location eye = player.isSneaking() ? player.getEyeLocation().clone().add(0, 0.25, 0) : player.getEyeLocation();
         Vector direction = eye.getDirection().normalize();
 
         World world = player.getWorld();
@@ -53,14 +53,14 @@ public class PacketBlockUtil {
         RayTraceResult vanillaResult = world.rayTraceBlocks(eye, direction, range, FluidCollisionMode.NEVER, false);
 
         Vector current = eye.toVector();
-        double step = 0.05;
+        double step = 0.02;
 
         for (double traveled = 0; traveled <= range; traveled += step) {
             current.add(direction.clone().multiply(step));
-            Block block = world.getBlockAt(current.getBlockX(), current.getBlockY(), current.getBlockZ());
+            Block block = world.getBlockAt(current.toLocation(world));
 
-            if (PacketBlockManager.getBlock(block.getLocation()).isPresent()) {
-                Material blockMaterial = PacketBlockManager.getBlock(block.getLocation()).get().getBlockData().getMaterial();
+            if (blockManager.getBlock(block.getLocation()).isPresent()) {
+                Material blockMaterial = blockManager.getBlock(block.getLocation()).get().getBlockData().getMaterial();
                 BoundingBox boundingBox = BoundingBoxes.getBoxAt(blockMaterial, block.getLocation());
 
                 if(boundingBox == null) {
