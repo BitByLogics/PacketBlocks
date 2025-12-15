@@ -10,6 +10,7 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerCh
 import lombok.RequiredArgsConstructor;
 import net.bitbylogic.packetblocks.block.PacketBlock;
 import net.bitbylogic.packetblocks.block.PacketBlockManager;
+import net.bitbylogic.packetblocks.structure.PacketBlockStructure;
 import org.bukkit.Location;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
@@ -33,7 +34,9 @@ public class ChunkLoadAdapter implements PacketListener {
         int chunkZ = packet.getColumn().getZ();
 
         List<PacketBlock> blocks = new ArrayList<>(manager.getBlocks(player.getWorld(), chunkX, chunkZ));
-        if (blocks.isEmpty()) return;
+        List<PacketBlockStructure> structures = manager.getStructuresInChunk(player.getWorld(), chunkX, chunkZ);
+
+        if (blocks.isEmpty() && structures.isEmpty()) return;
 
         BaseChunk[] sections = packet.getColumn().getChunks();
         int absMinHeight = Math.abs(player.getWorld().getMinHeight());
@@ -64,6 +67,41 @@ public class ChunkLoadAdapter implements PacketListener {
                     zInChunk,
                     wrappedState.getGlobalId()
             );
+        }
+
+        int originX = chunkX << 4;
+        int originZ = chunkZ << 4;
+        int originY = player.getWorld().getMinHeight();
+
+        for (PacketBlockStructure structure : structures) {
+            if (!structure.isViewer(player)) continue;
+
+            structure.forEachBlockInChunk(chunkX, chunkZ, (relX, relY, relZ, baseData) -> {
+                int absX = structure.getOrigin().getBlockX() + relX;
+                int absY = structure.getOrigin().getBlockY() + relY;
+                int absZ = structure.getOrigin().getBlockZ() + relZ;
+
+                int xInChunk = absX & 0xF;
+                int zInChunk = absZ & 0xF;
+                int sectionIndex = (absY >> 4) + (absMinHeight >> 4);
+                int yInSection = absY & 0xF;
+
+                if (sectionIndex < 0 || sectionIndex >= sections.length) return;
+
+                BaseChunk section = sections[sectionIndex];
+                if (section == null) return;
+
+                BlockData blockData = structure.getBlockData(player, relX, relY, relZ);
+                WrappedBlockState wrappedState = WrappedBlockState.getByString(blockData.getAsString());
+
+                section.set(
+                        PacketEvents.getAPI().getServerManager().getVersion().toClientVersion(),
+                        xInChunk,
+                        yInSection,
+                        zInChunk,
+                        wrappedState.getGlobalId()
+                );
+            });
         }
     }
 

@@ -4,6 +4,8 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import net.bitbylogic.packetblocks.PacketBlocks;
+import net.bitbylogic.packetblocks.structure.PacketBlockStructure;
+import net.bitbylogic.utils.Pair;
 import net.bitbylogic.utils.location.ChunkPosition;
 import net.bitbylogic.utils.location.LocationUtil;
 import org.bukkit.Bukkit;
@@ -14,6 +16,7 @@ import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
+import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -26,6 +29,8 @@ import java.util.logging.Level;
 public class PacketBlockManager {
 
     private final ConcurrentHashMap<ChunkPosition, List<PacketBlock>> blockLocations = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, PacketBlockStructure> structures = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ChunkPosition, Set<PacketBlockStructure>> structureChunkIndex = new ConcurrentHashMap<>();
 
     private final PacketBlocks plugin;
 
@@ -418,6 +423,192 @@ public class PacketBlockManager {
 
         getBlocksByViewerWithMeta(player, metaKey).forEach(packetBlock -> states.add(packetBlock.getBlockState(player)));
         player.sendBlockChanges(states);
+    }
+
+    /**
+     * Creates a new {@link PacketBlockStructure} instance with the specified origin location.
+     * The created structure is registered within the internally managed collection.
+     *
+     * @param origin the origin location for the structure; must not be null
+     * @return the newly created {@link PacketBlockStructure} instance,
+     *         or null if the origin's world is null
+     */
+    public PacketBlockStructure createStructure(@NonNull Location origin) {
+        World world = origin.getWorld();
+
+        if (world == null) {
+            plugin.getLogger().log(Level.WARNING, "Unable to create packet block structure, null world!: " + origin.toString());
+            return null;
+        }
+
+        PacketBlockStructure structure = new PacketBlockStructure(origin, this);
+        structures.put(structure.getId(), structure);
+        return structure;
+    }
+
+    /**
+     * Removes the specified {@link PacketBlockStructure} from the structures collection
+     * and clears all associated blocks.
+     *
+     * @param structure the {@link PacketBlockStructure} to be removed; must not be null
+     */
+    public void removeStructure(@NonNull PacketBlockStructure structure) {
+        structures.remove(structure.getId());
+        unindexStructureChunks(structure);
+        structure.clear();
+    }
+
+    /**
+     * Removes the {@link PacketBlockStructure} with the specified ID from the structures collection.
+     *
+     * @param structureId the UUID of the structure to be removed; must not be null
+     */
+    public void removeStructure(@NonNull UUID structureId) {
+        PacketBlockStructure structure = structures.remove(structureId);
+        if (structure != null) {
+            unindexStructureChunks(structure);
+            structure.clear();
+        }
+    }
+
+    /**
+     * Indexes a structure for a specific chunk. Called by PacketBlockStructure when blocks are added.
+     *
+     * @param structure the structure to index
+     * @param chunkX the chunk X coordinate
+     * @param chunkZ the chunk Z coordinate
+     */
+    public void indexStructureChunk(@NonNull PacketBlockStructure structure, int chunkX, int chunkZ) {
+        ChunkPosition pos = new ChunkPosition(structure.getWorld().getName(), chunkX, chunkZ);
+        structureChunkIndex.computeIfAbsent(pos, k -> ConcurrentHashMap.newKeySet()).add(structure);
+    }
+
+    /**
+     * Removes a structure's index for a specific chunk. Called by PacketBlockStructure when chunks become empty.
+     *
+     * @param structure the structure to unindex
+     * @param chunkX the chunk X coordinate
+     * @param chunkZ the chunk Z coordinate
+     */
+    public void unindexStructureChunk(@NonNull PacketBlockStructure structure, int chunkX, int chunkZ) {
+        ChunkPosition pos = new ChunkPosition(structure.getWorld().getName(), chunkX, chunkZ);
+        Set<PacketBlockStructure> set = structureChunkIndex.get(pos);
+        if (set != null) {
+            set.remove(structure);
+            if (set.isEmpty()) {
+                structureChunkIndex.remove(pos);
+            }
+        }
+    }
+
+    /**
+     * Removes all chunk index entries for a structure. Called when removing a structure.
+     *
+     * @param structure the structure to fully unindex
+     */
+    private void unindexStructureChunks(@NonNull PacketBlockStructure structure) {
+        structure.getOccupiedChunks().forEach(chunkKey ->
+                unindexStructureChunk(structure, chunkKey.getKey(), chunkKey.getValue())
+        );
+    }
+
+    /**
+     * Retrieves an {@link Optional} of {@link PacketBlockStructure} by its ID.
+     *
+     * @param structureId the UUID of the structure to find; must not be null
+     * @return an {@link Optional} containing the matching structure, or empty if not found
+     */
+    public Optional<PacketBlockStructure> getStructure(@NonNull UUID structureId) {
+        return Optional.ofNullable(structures.get(structureId));
+    }
+
+    /**
+     * Retrieves all registered structures.
+     *
+     * @return an unmodifiable collection of all {@link PacketBlockStructure} instances
+     */
+    public Collection<PacketBlockStructure> getStructures() {
+        return Collections.unmodifiableCollection(structures.values());
+    }
+
+    /**
+     * Retrieves all structures that have blocks in the specified chunk.
+     * Uses spatial index for O(1) chunk lookup.
+     *
+     * @param world the world to query; must not be null
+     * @param chunkX the X-coordinate of the chunk
+     * @param chunkZ the Z-coordinate of the chunk
+     * @return a list of structures that have blocks in the specified chunk
+     */
+    public List<PacketBlockStructure> getStructuresInChunk(@NonNull World world, int chunkX, int chunkZ) {
+        ChunkPosition pos = new ChunkPosition(world.getName(), chunkX, chunkZ);
+        Set<PacketBlockStructure> set = structureChunkIndex.get(pos);
+        return set == null ? Collections.emptyList() : new ArrayList<>(set);
+    }
+
+    /**
+     * Finds a structure that contains a block at the specified location.
+     * Uses chunk-based spatial index for efficient lookup.
+     *
+     * @param location the location to search for; must not be null
+     * @return an {@link Optional} containing a Pair of the structure and relative Vector,
+     *         or empty if no structure contains a block at that location
+     */
+    public Optional<Pair<PacketBlockStructure, Vector>> getStructureBlockAt(@NonNull Location location) {
+        World world = location.getWorld();
+
+        if (world == null) {
+            return Optional.empty();
+        }
+
+        int chunkX = location.getBlockX() >> 4;
+        int chunkZ = location.getBlockZ() >> 4;
+
+        for (PacketBlockStructure structure : getStructuresInChunk(world, chunkX, chunkZ)) {
+            if (structure.containsLocation(location)) {
+                Vector relative = structure.toRelativeVector(location);
+                return Optional.of(new Pair<>(structure, relative));
+            }
+        }
+
+        return Optional.empty();
+    }
+
+    /**
+     * Checks if a location contains either a PacketBlock or a block from a structure.
+     * First checks individual blocks, then checks structures.
+     *
+     * @param location the location to check; must not be null
+     * @return true if either a PacketBlock or structure block exists at the location
+     */
+    public boolean hasBlockAt(@NonNull Location location) {
+        if (getBlock(location).isPresent()) {
+            return true;
+        }
+        return getStructureBlockAt(location).isPresent();
+    }
+
+    /**
+     * Retrieves the BlockData at a location, checking both individual blocks and structures.
+     *
+     * @param location the location to check; must not be null
+     * @param player the player for whom to get the block data; must not be null
+     * @return an {@link Optional} containing the BlockData, or empty if no block exists
+     */
+    public Optional<BlockData> getBlockDataAt(@NonNull Location location, @NonNull Player player) {
+        Optional<PacketBlock> packetBlock = getBlock(location);
+        if (packetBlock.isPresent()) {
+            return Optional.of(packetBlock.get().getBlockState(player).getBlockData());
+        }
+
+        Optional<Pair<PacketBlockStructure, Vector>> structureBlock = getStructureBlockAt(location);
+        if (structureBlock.isPresent()) {
+            PacketBlockStructure structure = structureBlock.get().getKey();
+            Vector relativePos = structureBlock.get().getValue();
+            return Optional.of(structure.getBlockData(player, relativePos));
+        }
+
+        return Optional.empty();
     }
 
 }

@@ -37,6 +37,8 @@ public class PacketBlockUtil {
     /**
      * Performs a ray trace from the player's eye location along their current direction up to the specified range.
      * The ray trace detects blocks in the player's world considering custom bounding boxes when relevant.
+     * This includes both individual {@link net.bitbylogic.packetblocks.block.PacketBlock} instances
+     * and blocks within {@link net.bitbylogic.packetblocks.structure.PacketBlockStructure} instances.
      *
      * @param player the player from whose perspective the ray trace is performed
      * @param range the maximum distance the ray trace will travel
@@ -57,7 +59,8 @@ public class PacketBlockUtil {
 
         for (double traveled = 0; traveled <= range; traveled += step) {
             current.add(direction.clone().multiply(step));
-            Block block = world.getBlockAt(current.toLocation(world));
+            Location currentLoc = current.toLocation(world);
+            Block block = world.getBlockAt(currentLoc);
 
             if (blockManager.getBlock(block.getLocation()).isPresent()) {
                 Material blockMaterial = blockManager.getBlock(block.getLocation()).get().getBlockData().getMaterial();
@@ -65,6 +68,29 @@ public class PacketBlockUtil {
 
                 if(boundingBox == null) {
                     continue;
+                }
+
+                RayTraceResult boxResult = boundingBox.rayTrace(eye.toVector(), direction, range);
+
+                if (boxResult != null) {
+                    return new RayTraceResult(boxResult.getHitPosition(), block, boxResult.getHitBlockFace());
+                }
+            }
+
+            var structureBlockOpt = blockManager.getStructureBlockAt(block.getLocation());
+            if (structureBlockOpt.isPresent()) {
+                var pair = structureBlockOpt.get();
+                var structure = pair.getKey();
+
+                if (!structure.isViewer(player)) {
+                    continue;
+                }
+
+                Material blockMaterial = structure.getBlockData(player, pair.getValue()).getMaterial();
+                BoundingBox boundingBox = BoundingBoxes.getBoxAt(blockMaterial, block.getLocation());
+
+                if (boundingBox == null) {
+                    boundingBox = BoundingBox.of(block.getLocation().toVector(), block.getLocation().toVector().add(new Vector(1, 1, 1)));
                 }
 
                 RayTraceResult boxResult = boundingBox.rayTrace(eye.toVector(), direction, range);

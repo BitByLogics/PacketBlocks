@@ -4,7 +4,10 @@ import lombok.RequiredArgsConstructor;
 import net.bitbylogic.packetblocks.block.PacketBlock;
 import net.bitbylogic.packetblocks.block.PacketBlockManager;
 import net.bitbylogic.packetblocks.event.PacketBlockInteractEvent;
+import net.bitbylogic.packetblocks.event.PacketStructureInteractEvent;
+import net.bitbylogic.packetblocks.structure.PacketBlockStructure;
 import net.bitbylogic.packetblocks.util.PacketBlockUtil;
+import net.bitbylogic.utils.Pair;
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.BlockState;
@@ -17,8 +20,10 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.util.RayTraceResult;
+import org.bukkit.util.Vector;
 
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 @RequiredArgsConstructor
@@ -68,13 +73,33 @@ public class PacketBlockListener implements Listener {
 
         RayTraceResult result = PacketBlockUtil.rayTrace(event.getPlayer(), interactRange);
 
-        if (result == null || result.getHitBlock() == null || manager.getBlock(result.getHitBlock().getLocation()).isEmpty()) {
+        if (result == null || result.getHitBlock() == null) {
             return;
         }
 
-        PacketBlockInteractEvent interactEvent = new PacketBlockInteractEvent(player, event.getAction(), event.getHand(),
-                result.getHitBlockFace(), manager.getBlock(result.getHitBlock().getLocation()).get());
-        Bukkit.getPluginManager().callEvent(interactEvent);
+        Optional<PacketBlock> packetBlockOpt = manager.getBlock(result.getHitBlock().getLocation());
+        if (packetBlockOpt.isPresent()) {
+            PacketBlockInteractEvent interactEvent = new PacketBlockInteractEvent(player, event.getAction(), event.getHand(),
+                    result.getHitBlockFace(), packetBlockOpt.get());
+            Bukkit.getPluginManager().callEvent(interactEvent);
+            return;
+        }
+
+        Optional<Pair<PacketBlockStructure, Vector>> structureBlockOpt = manager.getStructureBlockAt(result.getHitBlock().getLocation());
+        if (structureBlockOpt.isPresent()) {
+            Pair<PacketBlockStructure, Vector> pair = structureBlockOpt.get();
+            PacketBlockStructure structure = pair.getKey();
+            Vector relativePos = pair.getValue();
+
+            if (!structure.isViewer(player)) {
+                return;
+            }
+
+            PacketStructureInteractEvent interactEvent = new PacketStructureInteractEvent(
+                    player, structure, relativePos, event.getAction(), event.getHand(), result.getHitBlockFace()
+            );
+            Bukkit.getPluginManager().callEvent(interactEvent);
+        }
     }
 
 }

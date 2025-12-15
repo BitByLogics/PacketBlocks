@@ -10,8 +10,12 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerMu
 import lombok.RequiredArgsConstructor;
 import net.bitbylogic.packetblocks.block.PacketBlock;
 import net.bitbylogic.packetblocks.block.PacketBlockManager;
+import net.bitbylogic.packetblocks.structure.PacketBlockStructure;
+import net.bitbylogic.utils.Pair;
 import org.bukkit.Location;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
+import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,20 +33,24 @@ public class BlockUpdateAdapter implements PacketListener {
         if (event.getPacketType() == PacketType.Play.Server.BLOCK_CHANGE) {
             WrapperPlayServerBlockChange packet = new WrapperPlayServerBlockChange(event);
             Vector3i position = packet.getBlockPosition();
-            Location blockPos = new Location(player.getWorld(), position.getX(), position.getY(), position.getZ());
+            Location location = new Location(player.getWorld(), position.getX(), position.getY(), position.getZ());
 
-            Location bukkitLoc = new Location(
-                    player.getWorld(),
-                    blockPos.getX(),
-                    blockPos.getY(),
-                    blockPos.getZ()
-            );
-
-            Optional<PacketBlock> optionalBlock = manager.getBlock(bukkitLoc);
+            Optional<PacketBlock> optionalBlock = manager.getBlock(location);
 
             if (optionalBlock.isPresent() && optionalBlock.get().isViewer(player)) {
                 PacketBlock block = optionalBlock.get();
                 packet.setBlockState(WrappedBlockState.getByString(block.getBlockState(player).getBlockData().getAsString()));
+                return;
+            }
+
+            Optional<Pair<PacketBlockStructure, Vector>> structureBlock = manager.getStructureBlockAt(location);
+            if (structureBlock.isPresent()) {
+                PacketBlockStructure structure = structureBlock.get().getKey();
+                if (structure.isViewer(player)) {
+                    Vector relativePos = structureBlock.get().getValue();
+                    BlockData blockData = structure.getBlockData(player, relativePos);
+                    packet.setBlockState(WrappedBlockState.getByString(blockData.getAsString()));
+                }
             }
         }
 
@@ -60,9 +68,23 @@ public class BlockUpdateAdapter implements PacketListener {
                     modifiedBlocks.add(new WrapperPlayServerMultiBlockChange.EncodedBlock(
                             WrappedBlockState.getByString(pb.get().getBlockState(player).getBlockData().getAsString()),
                             block.getX(), block.getY(), block.getZ()));
-                } else {
-                    modifiedBlocks.add(block);
+                    continue;
                 }
+
+                Optional<Pair<PacketBlockStructure, Vector>> structureBlock = manager.getStructureBlockAt(loc);
+                if (structureBlock.isPresent()) {
+                    PacketBlockStructure structure = structureBlock.get().getKey();
+                    if (structure.isViewer(player)) {
+                        Vector relativePos = structureBlock.get().getValue();
+                        BlockData blockData = structure.getBlockData(player, relativePos);
+                        modifiedBlocks.add(new WrapperPlayServerMultiBlockChange.EncodedBlock(
+                                WrappedBlockState.getByString(blockData.getAsString()),
+                                block.getX(), block.getY(), block.getZ()));
+                        continue;
+                    }
+                }
+
+                modifiedBlocks.add(block);
             }
 
             packet.setBlocks(modifiedBlocks.toArray(new WrapperPlayServerMultiBlockChange.EncodedBlock[0]));

@@ -9,11 +9,15 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPl
 import lombok.RequiredArgsConstructor;
 import net.bitbylogic.packetblocks.block.PacketBlockManager;
 import net.bitbylogic.packetblocks.block.PacketBlock;
+import net.bitbylogic.packetblocks.structure.PacketBlockStructure;
 import net.bitbylogic.packetblocks.util.PacketBlockUtil;
+import net.bitbylogic.utils.Pair;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.BlockSupport;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
+import org.bukkit.util.Vector;
 
 import java.util.Optional;
 
@@ -65,14 +69,25 @@ public class BlockPlaceAdapter implements PacketListener {
         }
 
         Optional<PacketBlock> optionalBlock = manager.getBlock(location);
+        Optional<Pair<PacketBlockStructure, Vector>> structureBlock = manager.getStructureBlockAt(location);
 
-        if (optionalBlock.isEmpty()) {
-            return;
+        BlockData targetBlockData = null;
+        boolean isPacketBlock = false;
+
+        if (optionalBlock.isPresent() && optionalBlock.get().isViewer(player)) {
+            PacketBlock packetBlock = optionalBlock.get();
+            targetBlockData = packetBlock.getBlockState(player).getBlockData();
+            isPacketBlock = true;
+        } else if (structureBlock.isPresent()) {
+            PacketBlockStructure structure = structureBlock.get().getKey();
+            if (structure.isViewer(player)) {
+                Vector relativePos = structureBlock.get().getValue();
+                targetBlockData = structure.getBlockData(player, relativePos);
+                isPacketBlock = true;
+            }
         }
 
-        PacketBlock packetBlock = optionalBlock.get();
-
-        if (!packetBlock.isViewer(player)) {
+        if (!isPacketBlock) {
             return;
         }
 

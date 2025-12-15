@@ -1,6 +1,5 @@
 package net.bitbylogic.packetblocks.adapter;
 
-import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListener;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
@@ -9,15 +8,19 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPl
 import lombok.NonNull;
 import net.bitbylogic.packetblocks.PacketBlocks;
 import net.bitbylogic.packetblocks.block.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlockManager;
 import net.bitbylogic.packetblocks.event.PacketBlockBreakEvent;
 import net.bitbylogic.packetblocks.event.PacketBlockStartBreakEvent;
-import net.bitbylogic.packetblocks.block.PacketBlockManager;
+import net.bitbylogic.packetblocks.structure.PacketBlockStructure;
 import net.bitbylogic.packetblocks.task.PacketBlockAnimationTask;
+import net.bitbylogic.utils.Pair;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.util.Vector;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -46,10 +49,23 @@ public class BlockBreakAdapter implements PacketListener {
 
         Vector3i position = packet.getBlockPosition();
         Location location = new Location(player.getWorld(), position.getX(), position.getY(), position.getZ());
-        Optional<PacketBlock> optionalBlock = manager.getBlock(location);
-        if (optionalBlock.isEmpty()) return;
 
-        PacketBlock packetBlock = optionalBlock.get();
+        Optional<PacketBlock> optionalBlock = manager.getBlock(location);
+        if (optionalBlock.isPresent()) {
+            handlePacketBlockDigging(player, packet, location, optionalBlock.get());
+            return;
+        }
+
+        Optional<Pair<PacketBlockStructure, Vector>> structureBlockOpt = manager.getStructureBlockAt(location);
+        if (structureBlockOpt.isPresent()) {
+            handleStructureBlockDigging(player, packet, location, structureBlockOpt.get());
+        }
+    }
+
+    private void handlePacketBlockDigging(@NonNull Player player,
+                                          @NonNull WrapperPlayClientPlayerDigging packet,
+                                          @NonNull Location location,
+                                          @NonNull PacketBlock packetBlock) {
         if (!packetBlock.isViewer(player)) return;
 
         int breakSpeed = packetBlock.getBreakSpeed(player);
@@ -61,6 +77,28 @@ public class BlockBreakAdapter implements PacketListener {
                 if (breakSpeed != -1) task.removeEntry(player);
             }
             case FINISHED_DIGGING -> handleStopDestroy(player, packetBlock, location);
+        }
+    }
+
+    private void handleStructureBlockDigging(@NonNull Player player,
+                                             @NonNull WrapperPlayClientPlayerDigging packet,
+                                             @NonNull Location location,
+                                             @NonNull Pair<PacketBlockStructure, Vector> structurePair) {
+        PacketBlockStructure structure = structurePair.getKey();
+        Vector relativePos = structurePair.getValue();
+
+        if (!structure.isViewer(player)) return;
+
+        int breakSpeed = structure.getBreakSpeed(player);
+        BlockData blockData = structure.getBlockData(player, relativePos);
+        float vanillaHardness = blockData.getMaterial().getHardness();
+
+        switch (packet.getAction()) {
+            case START_DIGGING -> handleStartDestroyStructure(player, structure, relativePos, location, breakSpeed, vanillaHardness);
+            case CANCELLED_DIGGING -> {
+                if (breakSpeed != -1) task.removeStructureEntry(player);
+            }
+            case FINISHED_DIGGING -> handleStopDestroyStructure(player, structure, relativePos, location);
         }
     }
 
@@ -110,6 +148,34 @@ public class BlockBreakAdapter implements PacketListener {
                         .getDrops(player.getInventory().getItemInMainHand(), player)
                         .forEach(drop -> player.getWorld().dropItemNaturally(location, drop));
             }
+        });
+    }
+
+    private void handleStartDestroyStructure(@NonNull Player player,
+                                             @NonNull PacketBlockStructure structure,
+                                             @NonNull Vector relativePos,
+                                             @NonNull Location location,
+                                             int breakSpeed,
+                                             float vanillaHardness) {
+
+        Bukkit.getScheduler().runTask(PacketBlocks.getInstance(), () -> {
+            if (player.getGameMode() == GameMode.CREATIVE || (breakSpeed == -1 && vanillaHardness == 0)) {
+                handleStopDestroyStructure(player, structure, relativePos, location);
+                return;
+            }
+
+            if (breakSpeed != -1) task.addStructureEntry(player, structure, relativePos);
+        });
+    }
+
+    private void handleStopDestroyStructure(@NonNull Player player,
+                                            @NonNull PacketBlockStructure structure,
+                                            @NonNull Vector relativePos,
+                                            @NonNull Location location) {
+
+        Bukkit.getScheduler().runTask(PacketBlocks.getInstance(), () -> {
+            ItemStack heldItem = player.getInventory().getItemInMainHand();
+            structure.simulateBreak(player, heldItem, relativePos);
         });
     }
 }
