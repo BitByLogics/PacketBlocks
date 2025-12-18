@@ -5,10 +5,11 @@ import lombok.NonNull;
 import lombok.Setter;
 import net.bitbylogic.packetblocks.PacketBlocks;
 import net.bitbylogic.packetblocks.event.PacketBlockBreakEvent;
-import net.bitbylogic.utils.Pair;
+import net.bitbylogic.packetblocks.util.BoundingBoxes;
+import net.bitbylogic.utils.location.ChunkPosition;
+import net.bitbylogic.utils.location.WorldPosition;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
@@ -23,10 +24,12 @@ import java.util.function.Supplier;
 @Getter
 public class PacketBlock {
 
-    private final World world;
+    private final WorldPosition position;
+    private final ChunkPosition chunk;
+
     private final Location location;
-    private final Pair<Integer, Integer> chunk;
-    private final BoundingBox boundingBox;
+
+    private final List<BoundingBox> boundingBoxes;
 
     private final Set<Predicate<Player>> viewConditions;
     private final HashMap<UUID, PacketBlockPlayerData> viewers;
@@ -52,10 +55,12 @@ public class PacketBlock {
      * @param blockData The visual and physical characteristics of the block. Must not be null.
      */
     protected PacketBlock(@NonNull Location location, @NonNull BlockData blockData) {
-        this.world = location.getWorld();
+        this.position = WorldPosition.ofBlock(location);
+        this.chunk = position.toChunkPosition();
+
         this.location = location;
-        this.chunk = new Pair<>(location.getChunk().getX(), location.getChunk().getZ());
-        this.boundingBox = BoundingBox.of(location.clone(), location.clone().add(1, 1, 1));
+
+        this.boundingBoxes = BoundingBoxes.getBoxes(blockData);
         this.blockData = blockData;
 
         this.viewConditions = new HashSet<>();
