@@ -5,7 +5,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import net.bitbylogic.packetblocks.PacketBlocks;
 import net.bitbylogic.utils.location.ChunkPosition;
-import net.bitbylogic.utils.location.LocationUtil;
+import net.bitbylogic.utils.location.WorldPosition;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -25,7 +25,7 @@ import java.util.logging.Level;
 @Getter
 public class PacketBlockManager {
 
-    private final ConcurrentHashMap<ChunkPosition, List<PacketBlock>> blockLocations = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ChunkPosition, Map<WorldPosition, PacketBlock>> blockLocations = new ConcurrentHashMap<>();
 
     private final PacketBlocks plugin;
 
@@ -55,19 +55,19 @@ public class PacketBlockManager {
         ChunkPosition identifier = new ChunkPosition(location.getWorld().getName(), chunk.getX(), chunk.getZ());
 
         if (blockLocations.containsKey(identifier)) {
-            List<PacketBlock> blocks = blockLocations.get(identifier);
+            Map<WorldPosition, PacketBlock> blocks = blockLocations.get(identifier);
 
-            if (blocks.contains(packetBlock)) {
+            if (blocks.containsValue(packetBlock)) {
                 return packetBlock;
             }
 
-            blocks.add(packetBlock);
+            blocks.put(packetBlock.getPosition(), packetBlock);
             blockLocations.put(identifier, blocks);
             return packetBlock;
         }
 
-        List<PacketBlock> newBlocks = new ArrayList<>();
-        newBlocks.add(packetBlock);
+        Map<WorldPosition, PacketBlock> newBlocks = new HashMap<>();
+        newBlocks.put(packetBlock.getPosition(), packetBlock);
 
         blockLocations.put(identifier, newBlocks);
         return packetBlock;
@@ -82,28 +82,28 @@ public class PacketBlockManager {
      * @param packetBlock the {@link PacketBlock} to be removed; must not be null
      */
     public void removeBlock(@NonNull PacketBlock packetBlock) {
-        for (Map.Entry<ChunkPosition, List<PacketBlock>> entry : blockLocations.entrySet()) {
-            List<PacketBlock> blocks = entry.getValue();
+        ChunkPosition chunk = packetBlock.getChunk();
 
-            if (!blocks.contains(packetBlock)) {
-                continue;
-            }
+        Map<WorldPosition, PacketBlock> blocks = blockLocations.get(chunk);
 
-            blocks.remove(packetBlock);
-
-            blockLocations.put(entry.getKey(), blocks);
+        if (blocks == null) {
+            return;
         }
+
+        blocks.remove(packetBlock.getPosition());
 
         packetBlock.getViewers().keySet().forEach(uuid -> {
             Player player = Bukkit.getPlayer(uuid);
 
-            if (player == null) {
-                return;
+            if (player != null) {
+                player.sendBlockChange(
+                        packetBlock.getLocation(),
+                        packetBlock.getLocation().getBlock().getBlockData()
+                );
             }
-
-            player.sendBlockChange(packetBlock.getLocation(), packetBlock.getLocation().getBlock().getBlockData());
         });
     }
+
 
     /**
      * Removes {@link PacketBlock} instances from the managed collection if they satisfy a specified condition.
@@ -114,10 +114,10 @@ public class PacketBlockManager {
      *                        must not be null.
      */
     public void removeIf(Predicate<PacketBlock> removePredicate) {
-        for (Map.Entry<ChunkPosition, List<PacketBlock>> entry : blockLocations.entrySet()) {
-            List<PacketBlock> blocks = entry.getValue();
+        for (Map.Entry<ChunkPosition, Map<WorldPosition, PacketBlock>> entry : blockLocations.entrySet()) {
+            Map<WorldPosition, PacketBlock> blocks = entry.getValue();
 
-            blocks.stream().filter(removePredicate).forEach(packetBlock -> {
+            blocks.values().stream().filter(removePredicate).forEach(packetBlock -> {
                 packetBlock.getViewers().keySet().forEach(uuid -> {
                     Player player = Bukkit.getPlayer(uuid);
 
@@ -129,7 +129,7 @@ public class PacketBlockManager {
                 });
             });
 
-            blocks.removeIf(removePredicate);
+            blocks.values().removeIf(removePredicate);
             blockLocations.put(entry.getKey(), blocks);
         }
     }
@@ -149,9 +149,15 @@ public class PacketBlockManager {
         }
 
         Chunk chunk = location.getChunk();
-        return new ArrayList<>(getBlocks(world, chunk.getX(), chunk.getZ())).stream()
-                .filter(loc -> loc != null && loc.getLocation() != null && LocationUtil.matches(loc.getLocation().toBlockLocation(), location.toBlockLocation()))
-                .findFirst();
+        ChunkPosition chunkPosition = ChunkPosition.of(chunk);
+
+        Map<WorldPosition, PacketBlock> blocks = blockLocations.get(chunkPosition);
+
+        if (blocks == null) {
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(blocks.get(WorldPosition.ofBlock(location)));
     }
 
     /**
@@ -165,7 +171,7 @@ public class PacketBlockManager {
         List<PacketBlock> blocks = new ArrayList<>();
 
         blockLocations.values().forEach(packetBlocks -> {
-            packetBlocks.forEach(block -> {
+            packetBlocks.values().forEach(block -> {
                 if(block == null || block.getLocation() == null) {
                     return;
                 }
@@ -193,9 +199,9 @@ public class PacketBlockManager {
      * @return a list of {@link PacketBlock} instances within the specified chunk,
      *         or an empty list if no blocks are found
      */
-    public List<PacketBlock> getBlocks(@NonNull World world, int chunkX, int chunkZ) {
+    public Map<WorldPosition, PacketBlock> getBlocks(@NonNull World world, int chunkX, int chunkZ) {
         ChunkPosition chunkIdentifier = new ChunkPosition(world.getName(), chunkX, chunkZ);
-        return blockLocations.getOrDefault(chunkIdentifier, new ArrayList<>());
+        return blockLocations.getOrDefault(chunkIdentifier, new HashMap<>());
     }
 
     /**
@@ -209,7 +215,7 @@ public class PacketBlockManager {
         List<PacketBlock> blocks = new ArrayList<>();
 
         blockLocations.forEach((identifier, value) -> {
-            value.forEach(block -> {
+            value.values().forEach(block -> {
                 if (!block.getViewers().containsKey(player.getUniqueId())) {
                     return;
                 }
@@ -234,7 +240,7 @@ public class PacketBlockManager {
         List<PacketBlock> blocks = new ArrayList<>();
 
         blockLocations.forEach((identifier, value) -> {
-            value.forEach(block -> {
+            value.values().forEach(block -> {
                 if (!block.getViewers().containsKey(player.getUniqueId()) || !block.getMetadata().containsKey(metaKey)) {
                     return;
                 }
@@ -256,7 +262,7 @@ public class PacketBlockManager {
         List<PacketBlock> blocks = new ArrayList<>();
 
         blockLocations.forEach((identifier, value) -> {
-            value.forEach(block -> {
+            value.values().forEach(block -> {
                 if (!block.getMetadata().containsKey(key)) {
                     return;
                 }
@@ -280,12 +286,15 @@ public class PacketBlockManager {
         List<PacketBlock> blocks = new ArrayList<>();
 
         getChunksInBoundingBox(world, boundingBox).forEach(chunk -> {
-            getBlocks(world, chunk.getX(), chunk.getZ()).forEach(block -> {
-                if (!block.getBoundingBox().overlaps(boundingBox)) {
-                    return;
-                }
+            getBlocks(world, chunk.getX(), chunk.getZ()).values().forEach(block -> {
+                for (BoundingBox box : block.getBoundingBoxes()) {
+                    if(!box.overlaps(boundingBox)) {
+                        continue;
+                    }
 
-                blocks.add(block);
+                    blocks.add(block);
+                    break;
+                }
             });
         });
 
@@ -333,7 +342,7 @@ public class PacketBlockManager {
         List<PacketBlock> blocks = new ArrayList<>();
 
         blockLocations.forEach((identifier, value) -> {
-            value.forEach(block -> {
+            value.values().forEach(block -> {
                 if (!block.getViewers().containsKey(player.getUniqueId())) {
                     return;
                 }
@@ -365,7 +374,7 @@ public class PacketBlockManager {
         List<PacketBlock> blocks = new ArrayList<>();
 
         blockLocations.forEach((identifier, value) -> {
-            value.forEach(block -> {
+            value.values().forEach(block -> {
                 if (!block.getViewers().containsKey(player.getUniqueId())) {
                     return;
                 }

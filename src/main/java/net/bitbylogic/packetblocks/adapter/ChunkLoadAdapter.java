@@ -32,7 +32,7 @@ public class ChunkLoadAdapter implements PacketListener {
         int chunkX = packet.getColumn().getX();
         int chunkZ = packet.getColumn().getZ();
 
-        List<PacketBlock> blocks = new ArrayList<>(manager.getBlocks(player.getWorld(), chunkX, chunkZ));
+        List<PacketBlock> blocks = new ArrayList<>(manager.getBlocks(player.getWorld(), chunkX, chunkZ).values());
         if (blocks.isEmpty()) return;
 
         BaseChunk[] sections = packet.getColumn().getChunks();
