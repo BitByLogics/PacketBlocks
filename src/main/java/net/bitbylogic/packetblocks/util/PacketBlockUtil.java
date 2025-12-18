@@ -2,14 +2,15 @@ package net.bitbylogic.packetblocks.util;
 
 import lombok.NonNull;
 import net.bitbylogic.packetblocks.PacketBlocks;
+import net.bitbylogic.packetblocks.block.PacketBlock;
 import net.bitbylogic.packetblocks.block.PacketBlockManager;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
-import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
@@ -58,16 +59,12 @@ public class PacketBlockUtil {
         for (double traveled = 0; traveled <= range; traveled += step) {
             current.add(direction.clone().multiply(step));
             Block block = world.getBlockAt(current.toLocation(world));
+            PacketBlock packetBlock = blockManager.getBlock(block.getLocation()).orElse(null);
 
-            if (blockManager.getBlock(block.getLocation()).isPresent()) {
-                Material blockMaterial = blockManager.getBlock(block.getLocation()).get().getBlockData().getMaterial();
-                BoundingBox boundingBox = BoundingBoxes.getBoxAt(blockMaterial, block.getLocation());
+            if (packetBlock != null) {
+                BlockData blockData = packetBlock.getBlockState(player).getBlockData();
 
-                if(boundingBox == null) {
-                    continue;
-                }
-
-                RayTraceResult boxResult = boundingBox.rayTrace(eye.toVector(), direction, range);
+                RayTraceResult boxResult = BoundingBoxes.rayTraceAt(block, blockData, eye.toVector(), direction, range);
 
                 if (boxResult != null) {
                     return new RayTraceResult(boxResult.getHitPosition(), block, boxResult.getHitBlockFace());
