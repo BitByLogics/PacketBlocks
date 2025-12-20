@@ -1,7 +1,12 @@
 net.bitbylogic.packetblocks
 net.bitbylogic.packetblocks.adapter
 net.bitbylogic.packetblocks.block
+net.bitbylogic.packetblocks.data
 net.bitbylogic.packetblocks.event
+net.bitbylogic.packetblocks.group
 net.bitbylogic.packetblocks.listener
+net.bitbylogic.packetblocks.metadata
 net.bitbylogic.packetblocks.task
 net.bitbylogic.packetblocks.util
+net.bitbylogic.packetblocks.viewer
+net.bitbylogic.packetblocks.viewer.impl
