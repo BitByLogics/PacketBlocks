@@ -77,7 +77,7 @@ packetBlock.addViewCondition(player -> player.hasPermission("packetblocks.view")
 packetBlock.addAndUpdateViewer(player);
 
 // Update for all viewers
-packetBlock.setBlockDataForAll(Material.GOLD_BLOCK.createBlockData());
+packetBlock.setDataForAll(Material.GOLD_BLOCK.createBlockData());
 
 // Simulate break (fires PacketBlockBreakEvent and drops items by default)
 packetBlock.simulateBreak(player);
@@ -113,13 +113,13 @@ PacketBlockManager blockManager = PacketBlocks.getInstance().getBlockManager();
 Some important methods:
 
 - `createBlock(Location location, BlockData blockData)` – Creates a new PacketBlock at the specified location
-- `removeBlock(PacketBlock packetBlock)` – Removes a block and resets the world block for all viewers
+- `removeBlock(PacketBlockHolder<?, ?> packetBlock)` – Removes a block and resets the world block for all viewers
 - `removeIf(Predicate<PacketBlock> removePredicate)` – Removes blocks that match a given condition
-- `getBlock(Location location)` – Gets the PacketBlock at a specific location, if it exists
-- `getBlocks(World world)` – Gets all PacketBlocks in a world
-- `getBlocks(World world, int chunkX, int chunkZ)` – Gets all PacketBlocks in a specific chunk
-- `getBlocksByViewer(Player player)` – Gets all PacketBlocks currently visible to a player
-- `getBlocksByViewerWithMeta(Player player, String metaKey)` – Gets all PacketBlocks visible to a player that contain a specific metadata key
+- `getBlock(Location location)` – Gets the PacketBlockHolder at a specific location, if it exists
+- `getBlocks(World world)` – Gets all PacketBlockHolders in a world
+- `getBlocks(World world, int chunkX, int chunkZ)` – Gets all PacketBlockHolders in a specific chunk
+- `getBlocksByViewer(Player player)` – Gets all PacketBlockHolders currently visible to a player
+- `getBlocksByViewerWithMeta(Player player, String metaKey)` – Gets all PacketBlockHolders visible to a player that contain a specific metadata key
 
 ---
 
