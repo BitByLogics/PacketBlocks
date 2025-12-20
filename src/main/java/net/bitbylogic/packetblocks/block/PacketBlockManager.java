@@ -4,13 +4,14 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import net.bitbylogic.packetblocks.PacketBlocks;
+import net.bitbylogic.packetblocks.data.DataHolder;
+import net.bitbylogic.packetblocks.group.PacketBlockGroup;
 import net.bitbylogic.utils.location.ChunkPosition;
 import net.bitbylogic.utils.location.WorldPosition;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
@@ -25,7 +26,7 @@ import java.util.logging.Level;
 @Getter
 public class PacketBlockManager {
 
-    private final ConcurrentHashMap<ChunkPosition, Map<WorldPosition, PacketBlock>> blockLocations = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ChunkPosition, Map<WorldPosition, PacketBlockHolder<?, ?>>> blockLocations = new ConcurrentHashMap<>();
 
     private final PacketBlocks plugin;
 
@@ -55,7 +56,7 @@ public class PacketBlockManager {
         ChunkPosition identifier = new ChunkPosition(location.getWorld().getName(), chunk.getX(), chunk.getZ());
 
         if (blockLocations.containsKey(identifier)) {
-            Map<WorldPosition, PacketBlock> blocks = blockLocations.get(identifier);
+            Map<WorldPosition, PacketBlockHolder<?, ?>> blocks = blockLocations.get(identifier);
 
             if (blocks.containsValue(packetBlock)) {
                 return packetBlock;
@@ -66,11 +67,47 @@ public class PacketBlockManager {
             return packetBlock;
         }
 
-        Map<WorldPosition, PacketBlock> newBlocks = new HashMap<>();
+        Map<WorldPosition, PacketBlockHolder<?, ?>> newBlocks = new HashMap<>();
         newBlocks.put(packetBlock.getPosition(), packetBlock);
 
         blockLocations.put(identifier, newBlocks);
         return packetBlock;
+    }
+
+    public PacketBlockGroup createGroup(@NonNull Map<Location, BlockData> groupBlocks) {
+        PacketBlockGroup packetGroup = new PacketBlockGroup(groupBlocks);
+
+        for (Map.Entry<ChunkPosition, List<WorldPosition>> entry : packetGroup.getChunkPositions().entrySet()) {
+            ChunkPosition chunkPosition = entry.getKey();
+            List<WorldPosition> worldPositions = entry.getValue();
+
+            Map<WorldPosition, PacketBlockHolder<?, ?>> blocks = blockLocations.computeIfAbsent(chunkPosition, k -> new HashMap<>());
+
+            for (WorldPosition worldPosition : worldPositions) {
+                blocks.put(worldPosition, packetGroup);
+                blockLocations.put(chunkPosition, blocks);
+            }
+        }
+
+        return packetGroup;
+    }
+
+    public Optional<BlockData> getBlockData(@Nullable Player player, @NonNull Location location) {
+        PacketBlockHolder<?, ?> packetBlock = getBlock(location).orElse(null);
+
+        if (packetBlock == null) {
+            return Optional.empty();
+        }
+
+        if (packetBlock instanceof PacketBlock singleBlock) {
+            return Optional.of(singleBlock.getData(player));
+        }
+
+        if (!(packetBlock instanceof PacketBlockGroup group)) {
+            return Optional.empty();
+        }
+
+        return group.getDataAt(player, location);
     }
 
     /**
@@ -81,29 +118,47 @@ public class PacketBlockManager {
      *
      * @param packetBlock the {@link PacketBlock} to be removed; must not be null
      */
-    public void removeBlock(@NonNull PacketBlock packetBlock) {
-        ChunkPosition chunk = packetBlock.getChunk();
-
-        Map<WorldPosition, PacketBlock> blocks = blockLocations.get(chunk);
-
-        if (blocks == null) {
-            return;
-        }
-
-        blocks.remove(packetBlock.getPosition());
-
-        packetBlock.getViewers().keySet().forEach(uuid -> {
+    public void removeBlock(@NonNull PacketBlockHolder<?, ?> packetBlock) {
+        for (UUID uuid : new ArrayList<>(packetBlock.getViewers().keySet())) {
             Player player = Bukkit.getPlayer(uuid);
 
             if (player != null) {
-                player.sendBlockChange(
-                        packetBlock.getLocation(),
-                        packetBlock.getLocation().getBlock().getBlockData()
-                );
+                packetBlock.removeViewer(player);
             }
-        });
-    }
+        }
 
+        if(packetBlock instanceof PacketBlock singleBlock) {
+            ChunkPosition chunk = singleBlock.getChunk();
+
+            Map<WorldPosition, PacketBlockHolder<?, ?>> blocks = blockLocations.get(chunk);
+
+            if (blocks == null) {
+                return;
+            }
+
+            blocks.remove(singleBlock.getPosition());
+            return;
+        }
+
+        if (!(packetBlock instanceof PacketBlockGroup group)) {
+            return;
+        }
+
+        for (Map.Entry<ChunkPosition, List<WorldPosition>> entry : group.getChunkPositions().entrySet()) {
+            ChunkPosition chunkPosition = entry.getKey();
+            List<WorldPosition> worldPositions = entry.getValue();
+
+            Map<WorldPosition, PacketBlockHolder<?, ?>> blocks = blockLocations.get(chunkPosition);
+
+            if (blocks == null) {
+                return;
+            }
+
+            for (WorldPosition worldPosition : worldPositions) {
+                blocks.remove(worldPosition);
+            }
+        }
+    }
 
     /**
      * Removes {@link PacketBlock} instances from the managed collection if they satisfy a specified condition.
@@ -113,23 +168,32 @@ public class PacketBlockManager {
      * @param removePredicate the condition used to determine which {@link PacketBlock} instances should be removed;
      *                        must not be null.
      */
-    public void removeIf(Predicate<PacketBlock> removePredicate) {
-        for (Map.Entry<ChunkPosition, Map<WorldPosition, PacketBlock>> entry : blockLocations.entrySet()) {
-            Map<WorldPosition, PacketBlock> blocks = entry.getValue();
+    public void removeIf(Predicate<PacketBlockHolder<?, ?>> removePredicate) {
+        List<Map.Entry<ChunkPosition, Map<WorldPosition, PacketBlockHolder<?, ?>>>> chunkEntries =
+                new ArrayList<>(blockLocations.entrySet());
 
-            blocks.values().stream().filter(removePredicate).forEach(packetBlock -> {
-                packetBlock.getViewers().keySet().forEach(uuid -> {
+        for (Map.Entry<ChunkPosition, Map<WorldPosition, PacketBlockHolder<?, ?>>> entry : chunkEntries) {
+            Map<WorldPosition, PacketBlockHolder<?, ?>> blocks = entry.getValue();
+
+            List<PacketBlockHolder<?, ?>> toRemove = new ArrayList<>();
+
+            for (PacketBlockHolder<?, ?> block : blocks.values()) {
+                if (removePredicate.test(block)) {
+                    toRemove.add(block);
+                }
+            }
+
+            for (PacketBlockHolder<?, ?> packetBlock : toRemove) {
+                for (UUID uuid : new ArrayList<>(packetBlock.getViewers().keySet())) {
                     Player player = Bukkit.getPlayer(uuid);
-
-                    if (player == null) {
-                        return;
+                    if (player != null) {
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> packetBlock.removeViewer(player), 1);
                     }
+                }
 
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> player.sendBlockChange(packetBlock.getLocation(), packetBlock.getLocation().getBlock().getBlockData()), 1);
-                });
-            });
+                blocks.values().remove(packetBlock);
+            }
 
-            blocks.values().removeIf(removePredicate);
             blockLocations.put(entry.getKey(), blocks);
         }
     }
@@ -141,7 +205,7 @@ public class PacketBlockManager {
      * @param location the {@link Location} at which to find the {@link PacketBlock}; must not be null
      * @return an {@link Optional} containing the matching {@link PacketBlock}, or an empty {@link Optional} if none is found
      */
-    public Optional<PacketBlock> getBlock(@NonNull Location location) {
+    public Optional<PacketBlockHolder<?, ?>> getBlock(@NonNull Location location) {
         World world = location.getWorld();
 
         if (world == null) {
@@ -151,7 +215,7 @@ public class PacketBlockManager {
         Chunk chunk = location.getChunk();
         ChunkPosition chunkPosition = ChunkPosition.of(chunk);
 
-        Map<WorldPosition, PacketBlock> blocks = blockLocations.get(chunkPosition);
+        Map<WorldPosition, PacketBlockHolder<?, ?>> blocks = blockLocations.get(chunkPosition);
 
         if (blocks == null) {
             return Optional.empty();
@@ -167,18 +231,12 @@ public class PacketBlockManager {
      * @param world the world for which the packet blocks are being queried; must not be null
      * @return a list of {@link PacketBlock} instances that exist in the specified world
      */
-    public List<PacketBlock> getBlocks(@NonNull World world) {
-        List<PacketBlock> blocks = new ArrayList<>();
+    public List<PacketBlockHolder<?, ?>> getBlocks(@NonNull World world) {
+        List<PacketBlockHolder<?, ?>> blocks = new ArrayList<>();
 
         blockLocations.values().forEach(packetBlocks -> {
             packetBlocks.values().forEach(block -> {
-                if(block == null || block.getLocation() == null) {
-                    return;
-                }
-
-                World blockWorld = block.getLocation().getWorld();
-
-                if (blockWorld == null || !blockWorld.getName().equalsIgnoreCase(world.getName())) {
+                if (!block.existsIn(world)) {
                     return;
                 }
 
@@ -199,7 +257,7 @@ public class PacketBlockManager {
      * @return a list of {@link PacketBlock} instances within the specified chunk,
      *         or an empty list if no blocks are found
      */
-    public Map<WorldPosition, PacketBlock> getBlocks(@NonNull World world, int chunkX, int chunkZ) {
+    public Map<WorldPosition, PacketBlockHolder<?, ?>> getBlocks(@NonNull World world, int chunkX, int chunkZ) {
         ChunkPosition chunkIdentifier = new ChunkPosition(world.getName(), chunkX, chunkZ);
         return blockLocations.getOrDefault(chunkIdentifier, new HashMap<>());
     }
@@ -211,8 +269,8 @@ public class PacketBlockManager {
      * @param player the player for whom the visible blocks are being queried; must not be null
      * @return a list of {@link PacketBlock} instances that the specified player can view
      */
-    public List<PacketBlock> getBlocksByViewer(@NonNull Player player) {
-        List<PacketBlock> blocks = new ArrayList<>();
+    public List<PacketBlockHolder<?, ?>> getBlocksByViewer(@NonNull Player player) {
+        List<PacketBlockHolder<?, ?>> blocks = new ArrayList<>();
 
         blockLocations.forEach((identifier, value) -> {
             value.values().forEach(block -> {
@@ -236,8 +294,8 @@ public class PacketBlockManager {
      * @return a list of {@link PacketBlock} instances that are both visible to the specified player
      *         and contain the specified metadata key.
      */
-    public List<PacketBlock> getBlocksByViewerWithMeta(@NonNull Player player, @NonNull String metaKey) {
-        List<PacketBlock> blocks = new ArrayList<>();
+    public List<PacketBlockHolder<?, ?>> getBlocksByViewerWithMeta(@NonNull Player player, @NonNull String metaKey) {
+        List<PacketBlockHolder<?, ?>> blocks = new ArrayList<>();
 
         blockLocations.forEach((identifier, value) -> {
             value.values().forEach(block -> {
@@ -258,8 +316,8 @@ public class PacketBlockManager {
      * @param key the metadata key to filter blocks by; must not be null.
      * @return a list of {@link PacketBlock} instances that contain the specified metadata key.
      */
-    public List<PacketBlock> getBlocksByMetadata(@NonNull String key) {
-        List<PacketBlock> blocks = new ArrayList<>();
+    public List<PacketBlockHolder<?, ?>> getBlocksByMetadata(@NonNull String key) {
+        List<PacketBlockHolder<?, ?>> blocks = new ArrayList<>();
 
         blockLocations.forEach((identifier, value) -> {
             value.values().forEach(block -> {
@@ -282,8 +340,8 @@ public class PacketBlockManager {
      * @param boundingBox the bounding box used to filter the blocks; must not be null
      * @return a list of {@link PacketBlock} instances that overlap with the specified bounding box
      */
-    public List<PacketBlock> getHitBlocks(@NonNull World world, @NonNull BoundingBox boundingBox) {
-        List<PacketBlock> blocks = new ArrayList<>();
+    public List<PacketBlockHolder<?, ?>> getHitBlocks(@NonNull World world, @NonNull BoundingBox boundingBox) {
+        List<PacketBlockHolder<?, ?>> blocks = new ArrayList<>();
 
         getChunksInBoundingBox(world, boundingBox).forEach(chunk -> {
             getBlocks(world, chunk.getX(), chunk.getZ()).values().forEach(block -> {
@@ -311,16 +369,13 @@ public class PacketBlockManager {
     public Set<Chunk> getChunksInBoundingBox(World world, BoundingBox box) {
         Set<Chunk> chunks = new HashSet<>();
 
-        // Calculate the chunk coordinates for the bounding box's min and max corners
         int minChunkX = (int) Math.floor(box.getMinX()) >> 4;
         int maxChunkX = (int) Math.floor(box.getMaxX()) >> 4;
         int minChunkZ = (int) Math.floor(box.getMinZ()) >> 4;
         int maxChunkZ = (int) Math.floor(box.getMaxZ()) >> 4;
 
-        // Iterate through all chunk coordinates in this range
         for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
             for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
-                // Add the chunk at (chunkX, chunkZ) to the set
                 Chunk chunk = world.getChunkAt(chunkX, chunkZ);
                 chunks.add(chunk);
             }
@@ -338,8 +393,8 @@ public class PacketBlockManager {
      * @return a list of {@link PacketBlock} instances that are both visible to the player and
      *         intersect with the specified bounding box
      */
-    public List<PacketBlock> getHitBlocksByViewer(@NonNull Player player, @NonNull BoundingBox boundingBox) {
-        List<PacketBlock> blocks = new ArrayList<>();
+    public List<PacketBlockHolder<?, ?>> getHitBlocksByViewer(@NonNull Player player, @NonNull BoundingBox boundingBox) {
+        List<PacketBlockHolder<?, ?>> blocks = new ArrayList<>();
 
         blockLocations.forEach((identifier, value) -> {
             value.values().forEach(block -> {
@@ -347,9 +402,17 @@ public class PacketBlockManager {
                     return;
                 }
 
-                BoundingBox box = BoundingBox.of(block.getLocation().clone(), block.getLocation().clone().add(1, 1, 1));
+                boolean hit = false;
 
-                if (!box.overlaps(boundingBox)) {
+                for (BoundingBox box : block.getBoundingBoxes()) {
+                    if(!box.overlaps(boundingBox)) {
+                        continue;
+                    }
+
+                    hit = true;
+                }
+
+                if (!hit) {
                     return;
                 }
 
@@ -370,8 +433,8 @@ public class PacketBlockManager {
      * @return a list of {@link PacketBlock} instances satisfying the conditions of being visible
      *         to the player, located within the bounding box, and containing the specified metadata key.
      */
-    public List<PacketBlock> getHitBlocksByViewerWithMeta(@NonNull Player player, @NonNull BoundingBox boundingBox, @NonNull String metaKey) {
-        List<PacketBlock> blocks = new ArrayList<>();
+    public List<PacketBlockHolder<?, ?>> getHitBlocksByViewerWithMeta(@NonNull Player player, @NonNull BoundingBox boundingBox, @NonNull String metaKey) {
+        List<PacketBlockHolder<?, ?>> blocks = new ArrayList<>();
 
         blockLocations.forEach((identifier, value) -> {
             value.values().forEach(block -> {
@@ -383,9 +446,17 @@ public class PacketBlockManager {
                     return;
                 }
 
-                BoundingBox box = BoundingBox.of(block.getLocation().clone(), block.getLocation().clone().add(1, 1, 1));
+                boolean hit = false;
 
-                if (!box.overlaps(boundingBox)) {
+                for (BoundingBox box : block.getBoundingBoxes()) {
+                    if(!box.overlaps(boundingBox)) {
+                        continue;
+                    }
+
+                    hit = true;
+                }
+
+                if (!hit) {
                     return;
                 }
 
@@ -417,16 +488,12 @@ public class PacketBlockManager {
      *                if null, all relevant blocks are updated
      */
     public void updateBlocksWithMeta(@NonNull Player player, @Nullable String metaKey) {
-        Set<BlockState> states = new HashSet<>();
-
         if (metaKey == null) {
-            getBlocksByViewer(player).forEach(packetBlock -> states.add(packetBlock.getBlockState(player)));
-            player.sendBlockChanges(states);
+            getBlocksByViewer(player).forEach(DataHolder::sendUpdates);
             return;
         }
 
-        getBlocksByViewerWithMeta(player, metaKey).forEach(packetBlock -> states.add(packetBlock.getBlockState(player)));
-        player.sendBlockChanges(states);
+        getBlocksByViewerWithMeta(player, metaKey).forEach(DataHolder::sendUpdates);
     }
 
 }

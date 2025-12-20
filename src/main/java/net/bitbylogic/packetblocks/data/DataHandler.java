@@ -3,23 +3,25 @@ package net.bitbylogic.packetblocks.data;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.Setter;
 import net.bitbylogic.packetblocks.viewer.PacketBlockViewer;
 import net.bitbylogic.packetblocks.viewer.ViewerHolder;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.util.BoundingBox;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Iterator;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class DataHandler<T, V extends PacketBlockViewer<T>> {
+
+    private final List<BoundingBox> boundingBoxes = new ArrayList<>();
 
     @Getter(AccessLevel.NONE)
     private final ViewerHolder<T, V> viewerHandler;
     private final Consumer<Player> updateConsumer;
+    private final Function<T, List<BoundingBox>> boundingBoxProvider;
 
     public T data;
 
@@ -28,11 +30,19 @@ public class DataHandler<T, V extends PacketBlockViewer<T>> {
     private boolean addViewerOnJoin;
     private boolean globalBreakAnimation;
 
-    public DataHandler(ViewerHolder<T, V> viewerHandler, Consumer<Player> updateConsumer, T data, int breakSpeed) {
+    public DataHandler(ViewerHolder<T, V> viewerHandler, Consumer<Player> updateConsumer, Function<T, List<BoundingBox>> boundingBoxProvider, T data, int breakSpeed) {
         this.viewerHandler = viewerHandler;
         this.updateConsumer = updateConsumer;
         this.data = data;
         this.breakSpeed = breakSpeed;
+
+        this.boundingBoxProvider = t -> {
+            boundingBoxes.clear();
+
+            boundingBoxes.addAll(boundingBoxProvider.apply(t));
+
+            return boundingBoxes;
+        };
     }
 
     /**
@@ -46,6 +56,8 @@ public class DataHandler<T, V extends PacketBlockViewer<T>> {
         }
 
         sendUpdates();
+
+        boundingBoxProvider.apply(data);
     }
 
     /**
@@ -62,6 +74,8 @@ public class DataHandler<T, V extends PacketBlockViewer<T>> {
         }
 
         sendUpdates();
+
+        boundingBoxProvider.apply(data);
     }
 
     /**
@@ -142,8 +156,26 @@ public class DataHandler<T, V extends PacketBlockViewer<T>> {
         }
     }
 
+    protected List<BoundingBox> getBoundingBoxes() {
+        return boundingBoxes;
+    }
+
     protected T getData() {
         return data;
+    }
+
+    protected T getData(@Nullable Player player) {
+        if(player == null) {
+            return data;
+        }
+
+        Optional<V> optionalViewer = viewerHandler.getViewer(player);
+
+        if(optionalViewer.isEmpty()) {
+            return data;
+        }
+
+        return optionalViewer.get().getSuppliedData();
     }
 
     protected int getBreakSpeed() {

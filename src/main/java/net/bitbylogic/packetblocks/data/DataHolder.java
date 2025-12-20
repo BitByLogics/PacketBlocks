@@ -3,7 +3,10 @@ package net.bitbylogic.packetblocks.data;
 import lombok.NonNull;
 import net.bitbylogic.packetblocks.viewer.PacketBlockViewer;
 import org.bukkit.entity.Player;
+import org.bukkit.util.BoundingBox;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 public interface DataHolder<T, V extends PacketBlockViewer<T>> {
 
@@ -82,8 +85,16 @@ public interface DataHolder<T, V extends PacketBlockViewer<T>> {
         getDataHandler().sendUpdates();
     }
 
+    default List<BoundingBox> getBoundingBoxes() {
+        return getDataHandler().getBoundingBoxes();
+    }
+
     default T getData() {
         return getDataHandler().getData();
+    }
+
+    default T getData(@Nullable Player player) {
+        return getDataHandler().getData(player);
     }
 
     default boolean isAddViewerOnJoin() {

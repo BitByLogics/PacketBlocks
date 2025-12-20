@@ -2,10 +2,13 @@ package net.bitbylogic.packetblocks.listener;
 
 import lombok.RequiredArgsConstructor;
 import net.bitbylogic.packetblocks.block.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlockHolder;
 import net.bitbylogic.packetblocks.block.PacketBlockManager;
 import net.bitbylogic.packetblocks.event.PacketBlockInteractEvent;
+import net.bitbylogic.packetblocks.group.PacketBlockGroup;
 import net.bitbylogic.packetblocks.util.PacketBlockUtil;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
@@ -43,10 +46,19 @@ public class PacketBlockListener implements Listener {
         Set<BlockState> states = new HashSet<>();
 
         manager.getBlocks(player.getWorld()).stream()
-                .filter(PacketBlock::isAddViewerOnJoin)
+                .filter(PacketBlockHolder::isAddViewerOnJoin)
                 .forEach(packetBlock -> {
-                    packetBlock.attemptAddViewer(player, false)
-                            .ifPresent(pd -> states.add(packetBlock.getBlockState(player)));
+                    if (packetBlock instanceof PacketBlock singleBlock) {
+                        singleBlock.attemptAddViewer(player, false)
+                                .ifPresent(pd -> states.add(((PacketBlock) packetBlock).getBlockState(player)));
+                        return;
+                    }
+
+                    if (!(packetBlock instanceof PacketBlockGroup group)) {
+                        return;
+                    }
+
+                    group.attemptAddViewer(player, false).ifPresent(pd -> states.addAll(group.getBlockStates(player)));
                 });
 
         player.sendBlockChanges(states);
@@ -57,7 +69,7 @@ public class PacketBlockListener implements Listener {
         Player player = event.getPlayer();
 
         manager.getBlocks(player.getWorld()).stream()
-                .filter(PacketBlock::isAddViewerOnJoin)
+                .filter(PacketBlockHolder::isAddViewerOnJoin)
                 .forEach(packetBlock -> packetBlock.removeViewer(player));
     }
 
@@ -72,8 +84,10 @@ public class PacketBlockListener implements Listener {
             return;
         }
 
+        Location location = result.getHitBlock().getLocation();
+
         PacketBlockInteractEvent interactEvent = new PacketBlockInteractEvent(player, event.getAction(), event.getHand(),
-                result.getHitBlockFace(), manager.getBlock(result.getHitBlock().getLocation()).get());
+                result.getHitBlockFace(), manager.getBlock(location).get(), location);
         Bukkit.getPluginManager().callEvent(interactEvent);
     }
 

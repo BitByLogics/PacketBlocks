@@ -13,14 +13,12 @@ import net.bitbylogic.utils.location.ChunkPosition;
 import net.bitbylogic.utils.location.WorldPosition;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.util.BoundingBox;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
 
 @Getter
 public class PacketBlock implements PacketBlockHolder<BlockData, SinglePacketBlockViewer> {
@@ -29,8 +27,6 @@ public class PacketBlock implements PacketBlockHolder<BlockData, SinglePacketBlo
     private final ChunkPosition chunk;
 
     private final Location location;
-
-    private final List<BoundingBox> boundingBoxes;
 
     private final DataHandler<BlockData, SinglePacketBlockViewer> dataHandler;
     private final ViewerHandler<BlockData, SinglePacketBlockViewer> viewerHandler;
@@ -61,18 +57,16 @@ public class PacketBlock implements PacketBlockHolder<BlockData, SinglePacketBlo
         this.position = WorldPosition.ofBlock(location);
         this.chunk = position.toChunkPosition();
 
-        this.location = location;
-
-        this.boundingBoxes = BoundingBoxes.getBoxes(blockData);
+        this.location = location.toBlockLocation();
 
         this.viewerHandler = new ViewerHandler<>(
                 player -> blockData,
                 this::sendUpdate,
-                player -> player.sendBlockChange(location, location.getBlock().getBlockData()),
+                player -> player.sendBlockChange(this.location, location.getBlock().getBlockData()),
                 () -> new SinglePacketBlockViewer(blockData, () -> blockData, breakSpeed)
         );
 
-        this.dataHandler = new DataHandler<>(this, this::sendUpdate, blockData, breakSpeed);
+        this.dataHandler = new DataHandler<>(this, this::sendUpdate, BoundingBoxes::getBoxes, blockData, breakSpeed);
 
         this.metadataHandler = new MetadataHandler();
     }
@@ -98,8 +92,9 @@ public class PacketBlock implements PacketBlockHolder<BlockData, SinglePacketBlo
      *
      * @param player the player to whom the block update will be sent
      */
+    @Override
     public void sendUpdate(@NonNull Player player) {
-        player.sendBlockChange(location, getBlockState(player).getBlockData());
+        player.sendBlockChange(location, getData(player));
     }
 
     /**
@@ -137,6 +132,16 @@ public class PacketBlock implements PacketBlockHolder<BlockData, SinglePacketBlo
                     .getDrops(player.getInventory().getItemInMainHand(), player)
                     .forEach(drop -> player.getWorld().dropItemNaturally(location, drop));
         });
+    }
+
+    @Override
+    public boolean existsIn(@NonNull World world) {
+        return position.worldName().equalsIgnoreCase(world.getName());
+    }
+
+    @Override
+    public boolean existsAt(@NonNull Location location) {
+        return position.equals(WorldPosition.ofBlock(location));
     }
 
 }
