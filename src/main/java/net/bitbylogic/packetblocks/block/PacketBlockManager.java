@@ -33,7 +33,7 @@ public class PacketBlockManager {
      * Creates a new {@link PacketBlock} instance at the specified location with the given block data.
      * The created block is registered within the internally managed collection, ensuring it is
      * appropriately tracked for further operations.
-     *
+     * <p>
      * If the block already exists in the specified chunk, no duplicate will be created,
      * and the existing instance will be returned.
      *
@@ -241,7 +241,7 @@ public class PacketBlockManager {
 
         blockLocations.forEach((identifier, value) -> {
             value.values().forEach(block -> {
-                if (!block.getViewers().containsKey(player.getUniqueId()) || !block.getMetadata().containsKey(metaKey)) {
+                if (!block.getViewers().containsKey(player.getUniqueId()) || !block.hasMetadata(metaKey)) {
                     return;
                 }
 
@@ -263,7 +263,7 @@ public class PacketBlockManager {
 
         blockLocations.forEach((identifier, value) -> {
             value.values().forEach(block -> {
-                if (!block.getMetadata().containsKey(key)) {
+                if (!block.hasMetadata(key)) {
                     return;
                 }
 
@@ -379,7 +379,7 @@ public class PacketBlockManager {
                     return;
                 }
 
-                if (!block.getMetadata().containsKey(metaKey)) {
+                if (!block.hasMetadata(metaKey)) {
                     return;
                 }
 

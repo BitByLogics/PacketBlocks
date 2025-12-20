@@ -41,7 +41,7 @@ public class BlockBreakAdapter implements PacketListener {
     public void onPacketReceive(PacketReceiveEvent event) {
         if (event.getPacketType() != PacketType.Play.Client.PLAYER_DIGGING) return;
 
-        Player player = (Player) event.getPlayer();
+        Player player = event.getPlayer();
         WrapperPlayClientPlayerDigging packet = new WrapperPlayClientPlayerDigging(event);
 
         Vector3i position = packet.getBlockPosition();

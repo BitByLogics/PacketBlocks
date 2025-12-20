@@ -1,4 +1,4 @@
-package net.bitbylogic.packetblocks.block;
+package net.bitbylogic.packetblocks.viewer;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -6,20 +6,23 @@ import lombok.NonNull;
 import lombok.Setter;
 import net.bitbylogic.packetblocks.metadata.MetadataHandler;
 import net.bitbylogic.packetblocks.metadata.MetadataHolder;
-import org.bukkit.block.data.BlockData;
 
 import java.util.function.Supplier;
 
-@Getter
 @Setter
+@Getter
 @AllArgsConstructor
-public class PacketBlockPlayerData implements MetadataHolder {
+public class PacketBlockViewer<T> implements MetadataHolder {
 
     private final MetadataHandler metadataHandler = new MetadataHandler();
 
-    private BlockData blockData;
-    private Supplier<BlockData> blockDataSupplier;
+    private T data;
+    private Supplier<T> dataSupplier;
     private int breakSpeed;
+
+    public T getSuppliedData() {
+        return dataSupplier != null ? dataSupplier.get() : data;
+    }
 
     @Override
     public @NonNull MetadataHandler getMetadataHandler() {
