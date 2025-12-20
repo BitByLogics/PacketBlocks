@@ -48,7 +48,6 @@ public class PacketBlockAnimationTask extends BukkitRunnable {
                 continue;
             }
 
-            // Send block break animation
             if (packetBlock.isGlobalBreakAnimation()) {
                 sendAnimationToAllViewers(packetBlock, stage);
             } else {
@@ -60,7 +59,6 @@ public class PacketBlockAnimationTask extends BukkitRunnable {
     }
 
     public void addEntry(Player player, PacketBlockHolder<?, ?> block) {
-        // Apply Mining Fatigue effect via PacketEvents
         WrapperPlayServerEntityEffect effectPacket = new WrapperPlayServerEntityEffect(player.getEntityId(), PotionTypes.MINING_FATIGUE,
                 127, Integer.MAX_VALUE, (byte) 1);
 
@@ -76,10 +74,8 @@ public class PacketBlockAnimationTask extends BukkitRunnable {
 
         PacketBlockHolder<?, ?> block = context.getBlock();
 
-        // Remove break animation
         sendFinishBreak(player, block);
 
-        // Remove Mining Fatigue
         WrapperPlayServerRemoveEntityEffect removeEffect = new WrapperPlayServerRemoveEntityEffect(player.getEntityId(), PotionTypes.MINING_FATIGUE);
 
         PacketEvents.getAPI().getPlayerManager().sendPacket(player, removeEffect);
