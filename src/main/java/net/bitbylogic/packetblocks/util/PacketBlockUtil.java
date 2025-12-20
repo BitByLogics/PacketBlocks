@@ -3,7 +3,9 @@ package net.bitbylogic.packetblocks.util;
 import lombok.NonNull;
 import net.bitbylogic.packetblocks.PacketBlocks;
 import net.bitbylogic.packetblocks.block.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlockHolder;
 import net.bitbylogic.packetblocks.block.PacketBlockManager;
+import net.bitbylogic.packetblocks.group.PacketBlockGroup;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -13,8 +15,41 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Optional;
 
 public class PacketBlockUtil {
+
+    public static BlockData getBlockData(@Nullable Player player, @NonNull Location location) {
+        if(location.getWorld() == null) {
+            return Material.AIR.createBlockData();
+        }
+
+        Optional<PacketBlockHolder<?, ?>> optionalHolder = PacketBlocks.getInstance().getBlockManager().getBlock(location);
+
+        if(optionalHolder.isEmpty()) {
+            return location.getBlock().getBlockData();
+        }
+
+        PacketBlockHolder<?, ?> packetBlockHolder = optionalHolder.get();
+
+        if (packetBlockHolder instanceof PacketBlock packetBlock) {
+            return packetBlock.getData();
+        }
+
+        if(packetBlockHolder instanceof PacketBlockGroup group) {
+            Optional<BlockData> optionalData = group.getDataAt(player, location);
+
+            if(optionalData.isEmpty()) {
+                return location.getBlock().getBlockData();
+            }
+
+            return optionalData.get();
+        }
+
+        return location.getBlock().getBlockData();
+    }
 
     /**
      * Retrieves the material type of the block at a specific location for a given player.
@@ -26,13 +61,34 @@ public class PacketBlockUtil {
      * @param location the location of the block to check; must not be null
      * @return the material representing the block type at the specified location
      */
-    public static Material getBlockType(@NonNull Player player, @NonNull Location location) {
+    public static Material getBlockType(@Nullable Player player, @NonNull Location location) {
         if(location.getWorld() == null) {
             return Material.AIR;
         }
 
-        return PacketBlocks.getInstance().getBlockManager().getBlock(location)
-                .map(packetBlock -> packetBlock.getBlockState(player).getBlockData().getMaterial()).orElse(location.getBlock().getType());
+        Optional<PacketBlockHolder<?, ?>> optionalHolder = PacketBlocks.getInstance().getBlockManager().getBlock(location);
+
+        if(optionalHolder.isEmpty()) {
+            return location.getBlock().getType();
+        }
+
+        PacketBlockHolder<?, ?> packetBlockHolder = optionalHolder.get();
+
+        if (packetBlockHolder instanceof PacketBlock packetBlock) {
+            return packetBlock.getData().getMaterial();
+        }
+
+        if(packetBlockHolder instanceof PacketBlockGroup group) {
+            Optional<BlockData> optionalData = group.getDataAt(player, location);
+
+            if(optionalData.isEmpty()) {
+                return location.getBlock().getType();
+            }
+
+            return optionalData.get().getMaterial();
+        }
+
+        return location.getBlock().getType();
     }
 
     /**
@@ -59,17 +115,43 @@ public class PacketBlockUtil {
         for (double traveled = 0; traveled <= range; traveled += step) {
             current.add(direction.clone().multiply(step));
             Block block = world.getBlockAt(current.toLocation(world));
-            PacketBlock packetBlock = blockManager.getBlock(block.getLocation()).orElse(null);
+            PacketBlockHolder<?, ?> packetBlock = blockManager.getBlock(block.getLocation()).orElse(null);
 
-            if (packetBlock != null) {
-                BlockData blockData = packetBlock.getBlockState(player).getBlockData();
+            if(packetBlock == null) {
+                continue;
+            }
+
+            if (packetBlock instanceof PacketBlock singleBlock) {
+                BlockData blockData = singleBlock.getData(player);
 
                 RayTraceResult boxResult = BoundingBoxes.rayTraceAt(block, blockData, eye.toVector(), direction, range);
 
-                if (boxResult != null) {
-                    return new RayTraceResult(boxResult.getHitPosition(), block, boxResult.getHitBlockFace());
+                if(boxResult == null) {
+                    continue;
                 }
+
+                return new RayTraceResult(boxResult.getHitPosition(), block, boxResult.getHitBlockFace());
             }
+
+            if (!(packetBlock instanceof PacketBlockGroup group)) {
+                continue;
+            }
+
+            Optional<BlockData> optionalBlockData = group.getDataAt(player, block.getLocation());
+
+            if (optionalBlockData.isEmpty()) {
+                continue;
+            }
+
+            BlockData blockData = optionalBlockData.get();
+
+            RayTraceResult boxResult = BoundingBoxes.rayTraceAt(block, blockData, eye.toVector(), direction, range);
+
+            if(boxResult == null) {
+                continue;
+            }
+
+            return new RayTraceResult(boxResult.getHitPosition(), block, boxResult.getHitBlockFace());
         }
 
         return vanillaResult;

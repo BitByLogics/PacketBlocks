@@ -9,13 +9,17 @@ import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChunkData;
 import lombok.RequiredArgsConstructor;
 import net.bitbylogic.packetblocks.block.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlockHolder;
 import net.bitbylogic.packetblocks.block.PacketBlockManager;
+import net.bitbylogic.packetblocks.group.PacketBlockGroup;
+import net.bitbylogic.utils.location.WorldPosition;
 import org.bukkit.Location;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 public class ChunkLoadAdapter implements PacketListener {
@@ -32,38 +36,71 @@ public class ChunkLoadAdapter implements PacketListener {
         int chunkX = packet.getColumn().getX();
         int chunkZ = packet.getColumn().getZ();
 
-        List<PacketBlock> blocks = new ArrayList<>(manager.getBlocks(player.getWorld(), chunkX, chunkZ).values());
+        List<PacketBlockHolder<?, ?>> blocks = new ArrayList<>(manager.getBlocks(player.getWorld(), chunkX, chunkZ).values());
         if (blocks.isEmpty()) return;
 
         BaseChunk[] sections = packet.getColumn().getChunks();
         int absMinHeight = Math.abs(player.getWorld().getMinHeight());
 
-        for (PacketBlock packetBlock : blocks) {
+        for (PacketBlockHolder<?, ?> packetBlock : blocks) {
             if (!packetBlock.isViewer(player)) continue;
 
-            Location loc = packetBlock.getLocation();
-            int xInChunk = loc.getBlockX() & 0xF;
-            int y = loc.getBlockY();
-            int zInChunk = loc.getBlockZ() & 0xF;
+            if(packetBlock instanceof PacketBlock singleBlock) {
+                Location loc = singleBlock.getLocation();
+                int xInChunk = loc.getBlockX() & 0xF;
+                int y = loc.getBlockY();
+                int zInChunk = loc.getBlockZ() & 0xF;
 
-            int sectionIndex = (y >> 4) + (absMinHeight >> 4);
-            int yInSection = y & 0xF;
+                int sectionIndex = (y >> 4) + (absMinHeight >> 4);
+                int yInSection = y & 0xF;
 
-            if (sectionIndex < 0 || sectionIndex >= sections.length) continue;
+                if (sectionIndex < 0 || sectionIndex >= sections.length) continue;
 
-            BaseChunk section = sections[sectionIndex];
-            if (section == null) continue;
+                BaseChunk section = sections[sectionIndex];
+                if (section == null) continue;
 
-            BlockData bukkitData = packetBlock.getBlockState(player).getBlockData();
-            WrappedBlockState wrappedState = WrappedBlockState.getByString(bukkitData.getAsString());
+                BlockData bukkitData = singleBlock.getData(player);
+                WrappedBlockState wrappedState = WrappedBlockState.getByString(bukkitData.getAsString());
 
-            section.set(
-                    PacketEvents.getAPI().getServerManager().getVersion().toClientVersion(),
-                    xInChunk,
-                    yInSection,
-                    zInChunk,
-                    wrappedState.getGlobalId()
-            );
+                section.set(
+                        PacketEvents.getAPI().getServerManager().getVersion().toClientVersion(),
+                        xInChunk,
+                        yInSection,
+                        zInChunk,
+                        wrappedState.getGlobalId()
+                );
+
+                continue;
+            }
+
+            if(!(packetBlock instanceof PacketBlockGroup group)) {
+                continue;
+            }
+
+            for (Map.Entry<WorldPosition, BlockData> entry : group.getData().entrySet()) {
+                Location loc = group.getCachedLocations().get(entry.getKey());
+                int xInChunk = loc.getBlockX() & 0xF;
+                int y = loc.getBlockY();
+                int zInChunk = loc.getBlockZ() & 0xF;
+
+                int sectionIndex = (y >> 4) + (absMinHeight >> 4);
+                int yInSection = y & 0xF;
+
+                if (sectionIndex < 0 || sectionIndex >= sections.length) continue;
+
+                BaseChunk section = sections[sectionIndex];
+                if (section == null) continue;
+
+                WrappedBlockState wrappedState = WrappedBlockState.getByString(entry.getValue().getAsString());
+
+                section.set(
+                        PacketEvents.getAPI().getServerManager().getVersion().toClientVersion(),
+                        xInChunk,
+                        yInSection,
+                        zInChunk,
+                        wrappedState.getGlobalId()
+                );
+            }
         }
     }
 

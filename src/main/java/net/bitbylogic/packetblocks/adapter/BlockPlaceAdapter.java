@@ -7,6 +7,7 @@ import com.github.retrooper.packetevents.protocol.world.BlockFace;
 import com.github.retrooper.packetevents.util.Vector3i;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerBlockPlacement;
 import lombok.RequiredArgsConstructor;
+import net.bitbylogic.packetblocks.block.PacketBlockHolder;
 import net.bitbylogic.packetblocks.block.PacketBlockManager;
 import net.bitbylogic.packetblocks.block.PacketBlock;
 import net.bitbylogic.packetblocks.util.PacketBlockUtil;
@@ -64,13 +65,13 @@ public class BlockPlaceAdapter implements PacketListener {
             return;
         }
 
-        Optional<PacketBlock> optionalBlock = manager.getBlock(location);
+        Optional<PacketBlockHolder<?, ?>> optionalBlock = manager.getBlock(location);
 
         if (optionalBlock.isEmpty()) {
             return;
         }
 
-        PacketBlock packetBlock = optionalBlock.get();
+        PacketBlockHolder<?, ?> packetBlock = optionalBlock.get();
 
         if (!packetBlock.isViewer(player)) {
             return;

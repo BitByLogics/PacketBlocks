@@ -2,7 +2,8 @@ package net.bitbylogic.packetblocks.event;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import net.bitbylogic.packetblocks.block.PacketBlock;
+import net.bitbylogic.packetblocks.block.PacketBlockHolder;
+import org.bukkit.Location;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -12,10 +13,10 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Called when a player interacts with a {@link PacketBlock}.
+ * Called when a player interacts with a {@link PacketBlockHolder}.
  *
  * <p>This event is fired by the PacketBlocks plugin whenever a
- * player right or left-clicks a {@link PacketBlock} instance in the world.
+ * player right or left-clicks a {@link PacketBlockHolder} instance in the world.
  *
  * <p>Handlers may choose to listen to this event to add custom
  * interaction behavior to packet blocks.
@@ -33,7 +34,8 @@ public class PacketBlockInteractEvent extends Event {
     private final Action action;
     private final EquipmentSlot hand;
     private final BlockFace blockFace;
-    private final PacketBlock block;
+    private final PacketBlockHolder<?, ?> block;
+    private final Location location;
 
     public static HandlerList getHandlerList() {
         return HANDLERS;
