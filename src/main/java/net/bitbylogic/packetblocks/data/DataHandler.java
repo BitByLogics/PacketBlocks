@@ -51,6 +51,8 @@ public class DataHandler<T, V extends PacketBlockViewer<T>> {
      * @param data the block data to be set for all viewers
      */
     protected void setDataForAll(@NonNull T data) {
+        this.data = data;
+
         for (V viewer : viewerHandler.getViewers().values()) {
             viewer.setData(data);
         }
