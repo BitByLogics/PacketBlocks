@@ -59,7 +59,7 @@ public class PacketBlockGroup implements PacketBlockHolder<Map<WorldPosition, Bl
         }
 
         this.viewerHandler = new ViewerHandler<>(
-                player -> positions,
+                player -> getData(),
                 this::sendUpdate,
                 player -> {
                     List<BlockState> states = new ArrayList<>();
@@ -71,7 +71,7 @@ public class PacketBlockGroup implements PacketBlockHolder<Map<WorldPosition, Bl
 
                     player.sendBlockChanges(states);
                 },
-                () -> new GroupPacketBlockViewer(positions, () -> positions, breakSpeed)
+                () -> new GroupPacketBlockViewer(getData(), this::getData, breakSpeed)
         );
 
         this.dataHandler = new DataHandler<>(this, this::sendUpdate, map -> {

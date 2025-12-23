@@ -60,10 +60,10 @@ public class PacketBlock implements PacketBlockHolder<BlockData, SinglePacketBlo
         this.location = location.toBlockLocation();
 
         this.viewerHandler = new ViewerHandler<>(
-                player -> blockData,
+                player -> getData(),
                 this::sendUpdate,
                 player -> player.sendBlockChange(this.location, location.getBlock().getBlockData()),
-                () -> new SinglePacketBlockViewer(blockData, () -> blockData, breakSpeed)
+                () -> new SinglePacketBlockViewer(getData(), this::getData, breakSpeed)
         );
 
         this.dataHandler = new DataHandler<>(this, this::sendUpdate, BoundingBoxes::getBoxes, blockData, breakSpeed);
