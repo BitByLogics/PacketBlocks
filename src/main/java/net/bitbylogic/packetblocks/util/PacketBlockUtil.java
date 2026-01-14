@@ -118,6 +118,14 @@ public class PacketBlockUtil {
             PacketBlockHolder<?, ?> packetBlock = blockManager.getBlock(block.getLocation()).orElse(null);
 
             if(packetBlock == null) {
+                if(!block.getType().isAir()) {
+                    RayTraceResult boxResult = BoundingBoxes.rayTraceAt(block, block.getBlockData(), eye.toVector(), direction, range);
+
+                    if(boxResult != null) {
+                        return boxResult;
+                    }
+                }
+
                 continue;
             }
 
