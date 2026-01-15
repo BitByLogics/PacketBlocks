@@ -122,7 +122,7 @@ public class PacketBlockUtil {
                     RayTraceResult boxResult = BoundingBoxes.rayTraceAt(block, block.getBlockData(), eye.toVector(), direction, range);
 
                     if(boxResult != null) {
-                        return boxResult;
+                        return new RayTraceResult(boxResult.getHitPosition(), block, boxResult.getHitBlockFace());
                     }
                 }
 
