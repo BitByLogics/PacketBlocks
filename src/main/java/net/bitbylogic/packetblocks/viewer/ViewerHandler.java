@@ -116,6 +116,7 @@ public class ViewerHandler<V, T extends PacketBlockViewer<V>> {
     protected T addAndUpdateViewer(@NonNull Player player) {
         T data = addViewer(player);
         playerDataSupplier.apply(player);
+        updateConsumer.accept(player);
         return data;
     }
 
