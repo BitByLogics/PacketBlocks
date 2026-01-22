@@ -47,6 +47,17 @@ public class ChunkLoadAdapter implements PacketListener {
 
             if(packetBlock instanceof PacketBlock singleBlock) {
                 Location loc = singleBlock.getLocation();
+
+                int blockX = loc.getBlockX();
+                int blockZ = loc.getBlockZ();
+
+                int blockChunkX = blockX >> 4;
+                int blockChunkZ = blockZ >> 4;
+
+                if (blockChunkX != chunkX || blockChunkZ != chunkZ) {
+                    continue;
+                }
+
                 int xInChunk = loc.getBlockX() & 0xF;
                 int y = loc.getBlockY();
                 int zInChunk = loc.getBlockZ() & 0xF;
@@ -79,6 +90,17 @@ public class ChunkLoadAdapter implements PacketListener {
 
             for (Map.Entry<WorldPosition, BlockData> entry : group.getData().entrySet()) {
                 Location loc = group.getCachedLocations().get(entry.getKey());
+
+                int blockX = loc.getBlockX();
+                int blockZ = loc.getBlockZ();
+
+                int blockChunkX = blockX >> 4;
+                int blockChunkZ = blockZ >> 4;
+
+                if (blockChunkX != chunkX || blockChunkZ != chunkZ) {
+                    continue;
+                }
+
                 int xInChunk = loc.getBlockX() & 0xF;
                 int y = loc.getBlockY();
                 int zInChunk = loc.getBlockZ() & 0xF;
