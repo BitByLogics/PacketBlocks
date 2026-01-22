@@ -92,6 +92,70 @@ public class PacketBlockManager {
         return packetGroup;
     }
 
+    /**
+     * Adds a collection of blocks to the specified group and updates the internal block location mappings.
+     *
+     * @param group     The group to which the blocks will be added. Must not be null.
+     * @param locations A map containing block locations and their associated block data. Must not be null.
+     */
+    public void addBlocksToGroup(@NonNull PacketBlockGroup group, @NonNull Map<Location, BlockData> locations) {
+        group.addLocations(locations);
+
+        for (Map.Entry<Location, BlockData> entry : locations.entrySet()) {
+            ChunkPosition chunkPosition = ChunkPosition.of(entry.getKey().getChunk());
+            blockLocations.get(chunkPosition).put(WorldPosition.ofBlock(entry.getKey()), group);
+        }
+    }
+
+    /**
+     * Adds a block to the specified block group at the given location with the provided block data.
+     *
+     * @param group The block group to which the block will be added. Must not be null.
+     * @param location The location where the block will be added. Must not be null.
+     * @param blockData The data representing the block to be added. Must not be null.
+     */
+    public void addBlockToGroup(@NonNull PacketBlockGroup group, @NonNull Location location, @NonNull BlockData blockData) {
+        group.addLocation(location, blockData);
+
+        ChunkPosition chunkPosition = ChunkPosition.of(location.getChunk());
+        blockLocations.get(chunkPosition).put(WorldPosition.ofBlock(location), group);
+    }
+
+    /**
+     * Removes the specified list of block locations from the given block group and updates the internal tracking structure.
+     *
+     * @param group      The block group from which locations should be removed. Must not be null.
+     * @param locations  The list of locations to be removed from the group. Must not be null.
+     */
+    public void removeBlocksFromGroup(@NonNull PacketBlockGroup group, @NonNull List<Location> locations) {
+        group.removeLocations(locations);
+
+        for (Location location : locations) {
+            ChunkPosition chunkPosition = ChunkPosition.of(location.getChunk());
+            blockLocations.get(chunkPosition).remove(WorldPosition.ofBlock(location));
+        }
+    }
+
+    /**
+     * Removes a block from a specified group at a given location.
+     *
+     * @param group    The PacketBlockGroup from which the block will be removed. Must not be null.
+     * @param location The Location of the block to be removed. Must not be null.
+     */
+    public void removeBlockFromGroup(@NonNull PacketBlockGroup group, @NonNull Location location) {
+        group.removeLocation(location);
+
+        ChunkPosition chunkPosition = ChunkPosition.of(location.getChunk());
+        blockLocations.get(chunkPosition).remove(WorldPosition.ofBlock(location));
+    }
+
+    /**
+     * Retrieves the block data for a specific player and location, if available.
+     *
+     * @param player   the player for whom the block data is retrieved; can be null if player-specific data is not required.
+     * @param location the location of the block whose data is to be retrieved; must not be null.
+     * @return an Optional containing the block data for the given player and location, or an empty Optional if no data is available.
+     */
     public Optional<BlockData> getBlockData(@Nullable Player player, @NonNull Location location) {
         PacketBlockHolder<?, ?> packetBlock = getBlock(location).orElse(null);
 
