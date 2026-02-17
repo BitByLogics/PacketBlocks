@@ -16,6 +16,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -46,6 +47,34 @@ public class PacketBlockListener implements Listener {
         Set<BlockState> states = new HashSet<>();
 
         manager.getBlocks(player.getWorld()).stream()
+                .filter(PacketBlockHolder::isAddViewerOnJoin)
+                .forEach(packetBlock -> {
+                    if (packetBlock instanceof PacketBlock singleBlock) {
+                        singleBlock.attemptAddViewer(player, false)
+                                .ifPresent(pd -> states.add(((PacketBlock) packetBlock).getBlockState(player)));
+                        return;
+                    }
+
+                    if (!(packetBlock instanceof PacketBlockGroup group)) {
+                        return;
+                    }
+
+                    group.attemptAddViewer(player, false).ifPresent(pd -> states.addAll(group.getBlockStates(player)));
+                });
+
+        player.sendBlockChanges(states);
+    }
+
+    @EventHandler
+    public void onWorldChange(PlayerChangedWorldEvent event) {
+        Player player = event.getPlayer();
+        Set<BlockState> states = new HashSet<>();
+
+        manager.getBlocks(event.getFrom()).stream()
+                .filter(packetBlockHolder -> packetBlockHolder.isViewer(player))
+                .forEach(packetBlock -> packetBlock.removeViewer(player));
+
+        manager.getBlocks(event.getPlayer().getWorld()).stream()
                 .filter(PacketBlockHolder::isAddViewerOnJoin)
                 .forEach(packetBlock -> {
                     if (packetBlock instanceof PacketBlock singleBlock) {
