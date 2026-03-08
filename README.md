@@ -1,28 +1,27 @@
-# 🧱 PacketBlocks
+# Packet Blocks
 
-A Spigot/Paper library for creating and managing **client-side (packet-based) blocks**.  
+A Spigot/Paper library for creating and managing client-side blocks.  
 PacketBlocks lets you display blocks to players without modifying the real world, while still providing APIs for interaction, metadata, block breaking, and per-player visibility.
 
 ---
 
-## ✨ Features
+## Features
 - Spawn blocks visible only to specific players
 - Fully per-player block states (`BlockData`, suppliers, metadata)
 - Break simulation (`PacketBlockBreakEvent`) with configurable item drops
-- Per-viewer visibility conditions (filters)
+- Per-viewer visibility conditions
 - Utilities for bounding boxes, collision handling, and animations
 - Automatic viewer management
 
 ---
 
-## ⚙️ Requirements
+## Requirements
 - **Server:** Paper 1.21+ (or a compatible fork)
-- **Java:** 21+
 - **Dependency:** [PacketEvents](https://github.com/retrooper/packetevents) `2.9.5+`
 
 ---
 
-## 🛠 Installation
+## Installation
 
 **Maven:**
 ```xml
@@ -37,7 +36,7 @@ PacketBlocks lets you display blocks to players without modifying the real world
     <dependency>
         <groupId>com.github.BitByLogics</groupId>
         <artifactId>PacketBlocks</artifactId>
-        <version>1.0.1</version>
+        <version>1.2.4</version>
         <scope>provided</scope>
     </dependency>
 </dependencies>
@@ -50,15 +49,13 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'com.github.BitByLogics:PacketBlocks:1.0.1'
+    compileOnly 'com.github.BitByLogics:PacketBlocks:1.2.4'
 }
 ```
 
-Replace `1.0.1` with the actual project version.
-
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ```java
 Location loc = player.getLocation().add(0, 0, 1);
@@ -85,26 +82,25 @@ packetBlock.simulateBreak(player);
 
 ---
 
-## 📖 Documentation
+## Documentation
 
-Full API documentation for **PacketBlocks** is available online:  
-[View Javadocs](https://bitbylogics.github.io/PacketBlocks/)
+Full API documentation is available [here](https://bitbylogics.github.io/PacketBlocks/)
 
 ---
 
-## ⚡ Simulate breaks & drops
+## Simulate breaks & drops
 
 `simulateBreak(...)` triggers `PacketBlockBreakEvent`. This event:
 
 - Is cancellable
-- By default, **will drop items based on the `BlockState` and tool used**
-- If you do **not** want items to drop, call `event.setDropItems(false)` in your event listener
+- By default, will drop items based on the `BlockState` and tool used
+- If you do not want items to drop, call `event.setDropItems(false)` in your event listener
 
 ---
 
-## 🗂 PacketBlockManager Overview
+## PacketBlockManager Overview
 
-The `PacketBlockManager` is the main API for managing PacketBlocks on the server. You can get the manager using:
+The PacketBlockManager is the main API for managing PacketBlocks on the server. You can get the manager using:
 
 ```java
 PacketBlockManager blockManager = PacketBlocks.getInstance().getBlockManager();
@@ -123,7 +119,7 @@ Some important methods:
 
 ---
 
-## 🛠 Development
+## Development
 
 Build the project:
 ```bash
@@ -132,23 +128,6 @@ mvn clean install
 
 ---
 
-## 🤝 Contributing
+## License
 
-Contributions are welcome:
-
-1. Fork the repository
-2. Create a branch for your feature/fix
-3. Open a Pull Request with a clear description and tests/examples when appropriate
-
----
-
-## 📜 License
-
-MIT License — see [LICENSE](./LICENSE).
-
----
-
-## 👤 Author
-
-**BitByLogic**  
-Discord: `@BitByLogic`
+MIT License, see [LICENSE](./LICENSE).
