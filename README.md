@@ -21,6 +21,23 @@ PacketBlocks lets you display blocks to players without modifying the real world
 
 ---
 
+## Demo
+
+![PacketBlocks Demo](assets/example.gif)
+
+Per-player blocks, structures, and animations without modifying the world!
+
+---
+
+## Example Usage
+
+A production example of Packet Blocks being used to create per-player structures can be found here:
+
+- [GitHub](https://github.com/BitByLogics/Structures)
+- [Modrinth](https://modrinth.com/plugin/structures)
+
+---
+
 ## Installation
 
 **Maven:**
