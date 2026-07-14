@@ -16,10 +16,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.player.PlayerChangedWorldEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.util.RayTraceResult;
 
 import java.util.HashSet;
@@ -29,6 +26,16 @@ import java.util.Set;
 public class PacketBlockListener implements Listener {
 
     private final PacketBlockManager manager;
+
+    @EventHandler
+    public void onKick(PlayerKickEvent event) {
+        if (event.getCause() != PlayerKickEvent.Cause.FLYING_PLAYER ||
+                !manager.getPlugin().getConfig().getBoolean("Block-Flight-Kick")) {
+            return;
+        }
+
+        event.setCancelled(true);
+    }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onBlockBreak(BlockBreakEvent event) {

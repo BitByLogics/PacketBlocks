@@ -1,0 +1,3 @@
+# If this option is enabled, players will not be kicked when they
+# are detected to be "flying" by the server.
+Block-Flight-Kick: true
