@@ -251,7 +251,7 @@ public class PacketBlockManager {
                 for (UUID uuid : new ArrayList<>(packetBlock.getViewers().keySet())) {
                     Player player = Bukkit.getPlayer(uuid);
                     if (player != null) {
-                        Bukkit.getScheduler().runTaskLater(plugin, () -> packetBlock.removeViewer(player), 1);
+                        plugin.getFoliaLib().getScheduler().runAtEntityLater(player, () -> packetBlock.removeViewer(player), 1);
                     }
                 }
 

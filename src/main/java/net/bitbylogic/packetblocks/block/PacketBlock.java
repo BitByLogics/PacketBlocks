@@ -115,7 +115,7 @@ public class PacketBlock implements PacketBlockHolder<BlockData, SinglePacketBlo
      * @param tool   The tool used by the player to break the block. Can be null if no tool is used.
      */
     public void simulateBreak(@NonNull Player player, @Nullable ItemStack tool) {
-        Bukkit.getScheduler().runTask(PacketBlocks.getInstance(), () -> {
+        PacketBlocks.getInstance().getFoliaLib().getScheduler().runAtEntity(player, wrappedTask -> {
             PacketBlockBreakEvent breakEvent = new PacketBlockBreakEvent(player, this, location, tool);
             Bukkit.getPluginManager().callEvent(breakEvent);
 

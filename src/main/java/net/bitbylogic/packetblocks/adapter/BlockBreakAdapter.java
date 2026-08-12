@@ -29,15 +29,18 @@ import java.util.UUID;
 
 public class BlockBreakAdapter implements PacketListener {
 
+    private final PacketBlocks plugin;
     private final PacketBlockManager manager;
     private final PacketBlockAnimationTask task;
     private final Set<UUID> cancelledBreaks;
 
-    public BlockBreakAdapter(@NonNull PacketBlockManager manager) {
-        this.manager = manager;
+    public BlockBreakAdapter(@NonNull PacketBlocks plugin) {
+        this.plugin = plugin;
+        this.manager = plugin.getBlockManager();
         this.task = new PacketBlockAnimationTask();
-        this.task.runTaskTimerAsynchronously(manager.getPlugin(), 1, 1);
         this.cancelledBreaks = new HashSet<>();
+
+        plugin.getFoliaLib().getScheduler().runTimerAsync(task, 1, 1);
     }
 
     @Override
@@ -74,7 +77,7 @@ public class BlockBreakAdapter implements PacketListener {
                                     int breakSpeed,
                                     float vanillaHardness) {
 
-        Bukkit.getScheduler().runTask(PacketBlocks.getInstance(), () -> {
+        plugin.getFoliaLib().getScheduler().runAtEntity(player, wrappedTask -> {
             PacketBlockStartBreakEvent breakStartEvent = new PacketBlockStartBreakEvent(player, packetBlock, location);
             Bukkit.getPluginManager().callEvent(breakStartEvent);
 
@@ -97,7 +100,7 @@ public class BlockBreakAdapter implements PacketListener {
                                    @NonNull PacketBlockHolder<?, ?> packetBlock,
                                    @NonNull Location location) {
 
-        Bukkit.getScheduler().runTask(PacketBlocks.getInstance(), () -> {
+        plugin.getFoliaLib().getScheduler().runAtEntity(player, wrappedTask -> {
             ItemStack heldItem = player.getInventory().getItemInMainHand();
             PacketBlockBreakEvent breakEvent = new PacketBlockBreakEvent(player, packetBlock, location, heldItem);
             Bukkit.getPluginManager().callEvent(breakEvent);

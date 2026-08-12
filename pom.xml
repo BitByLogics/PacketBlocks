@@ -6,7 +6,7 @@
 
     <groupId>net.bitbylogic</groupId>
     <artifactId>PacketBlocks</artifactId>
-    <version>1.2.5</version>
+    <version>1.2.6</version>
     <packaging>jar</packaging>
 
     <name>PacketBlocks</name>
@@ -74,6 +74,10 @@
                             <pattern>net.bitbylogic.utils</pattern>
                             <shadedPattern>net.bitbylogic.packetblocks.lib.bitsutils</shadedPattern>
                         </relocation>
+                        <relocation>
+                            <pattern>com.tcoded.folialib</pattern>
+                            <shadedPattern>net.bitbylogic.packetblocks.lib.folialib</shadedPattern>
+                        </relocation>
                     </relocations>
                 </configuration>
             </plugin>
@@ -109,6 +113,12 @@
         <repository>
             <id>codemc-snapshots</id>
             <url>https://repo.codemc.io/repository/maven-snapshots/</url>
+        </repository>
+
+        <!-- FoliaLib -->
+        <repository>
+            <id>tcoded-releases</id>
+            <url>https://repo.tcoded.com/releases</url>
         </repository>
     </repositories>
 
@@ -149,6 +159,14 @@
             <artifactId>packetevents-spigot</artifactId>
             <version>2.13.0</version>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- FoliaLib -->
+        <dependency>
+            <groupId>com.tcoded</groupId>
+            <artifactId>FoliaLib</artifactId>
+            <version>0.5.1</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 </project>

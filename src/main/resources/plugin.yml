@@ -4,3 +4,4 @@ main: net.bitbylogic.packetblocks.PacketBlocks
 api-version: '1.21'
 authors: [ BitByLogic ]
 depend: [ "packetevents" ]
+folia-supported: true

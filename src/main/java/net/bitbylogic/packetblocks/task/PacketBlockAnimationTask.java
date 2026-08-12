@@ -6,6 +6,7 @@ import com.github.retrooper.packetevents.util.Vector3i;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBlockBreakAnimation;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityEffect;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerRemoveEntityEffect;
+import com.tcoded.folialib.wrapper.task.WrappedTask;
 import net.bitbylogic.packetblocks.block.PacketBlock;
 import net.bitbylogic.packetblocks.block.PacketBlockHolder;
 import net.bitbylogic.packetblocks.group.PacketBlockGroup;
@@ -20,7 +21,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 
-public class PacketBlockAnimationTask extends BukkitRunnable {
+public class PacketBlockAnimationTask implements Runnable {
 
     private final Map<Player, BlockAnimationContext> blockMap = new HashMap<>();
 
