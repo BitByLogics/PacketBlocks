@@ -47,7 +47,7 @@ public class BlockUpdateAdapter implements PacketListener {
                 PacketBlockHolder<?, ?> block = optionalBlock.get();
 
                 if(block instanceof PacketBlock singleBlock) {
-                    packet.setBlockState(WrappedBlockState.getByString(singleBlock.getData(player).getAsString()));
+                    packet.setBlockState(WrappedBlockState.getByString(singleBlock.getDataAt(player, bukkitLoc).getAsString()));
                     return;
                 }
 
@@ -81,7 +81,7 @@ public class BlockUpdateAdapter implements PacketListener {
 
                     if(block instanceof PacketBlock singleBlock) {
                         modifiedBlocks.add(new WrapperPlayServerMultiBlockChange.EncodedBlock(
-                                WrappedBlockState.getByString(singleBlock.getData(player).getAsString()),
+                                WrappedBlockState.getByString(singleBlock.getDataAt(player, loc).getAsString()),
                                 encodedBlock.getX(), encodedBlock.getY(), encodedBlock.getZ()));
                         return;
                     }

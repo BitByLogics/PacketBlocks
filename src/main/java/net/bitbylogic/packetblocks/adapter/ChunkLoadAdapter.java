@@ -46,40 +46,47 @@ public class ChunkLoadAdapter implements PacketListener {
             if (!packetBlock.isViewer(player)) continue;
 
             if(packetBlock instanceof PacketBlock singleBlock) {
-                Location loc = singleBlock.getLocation();
+                List<Location> locations = new ArrayList<>();
+                locations.add(singleBlock.getLocation());
 
-                int blockX = loc.getBlockX();
-                int blockZ = loc.getBlockZ();
-
-                int blockChunkX = blockX >> 4;
-                int blockChunkZ = blockZ >> 4;
-
-                if (blockChunkX != chunkX || blockChunkZ != chunkZ) {
-                    continue;
+                if (singleBlock.getUpperLocation() != null) {
+                    locations.add(singleBlock.getUpperLocation());
                 }
 
-                int xInChunk = loc.getBlockX() & 0xF;
-                int y = loc.getBlockY();
-                int zInChunk = loc.getBlockZ() & 0xF;
+                for (Location loc : locations) {
+                    int blockX = loc.getBlockX();
+                    int blockZ = loc.getBlockZ();
 
-                int sectionIndex = (y >> 4) + (absMinHeight >> 4);
-                int yInSection = y & 0xF;
+                    int blockChunkX = blockX >> 4;
+                    int blockChunkZ = blockZ >> 4;
 
-                if (sectionIndex < 0 || sectionIndex >= sections.length) continue;
+                    if (blockChunkX != chunkX || blockChunkZ != chunkZ) {
+                        continue;
+                    }
 
-                BaseChunk section = sections[sectionIndex];
-                if (section == null) continue;
+                    int xInChunk = loc.getBlockX() & 0xF;
+                    int y = loc.getBlockY();
+                    int zInChunk = loc.getBlockZ() & 0xF;
 
-                BlockData bukkitData = singleBlock.getData(player);
-                WrappedBlockState wrappedState = WrappedBlockState.getByString(bukkitData.getAsString());
+                    int sectionIndex = (y >> 4) + (absMinHeight >> 4);
+                    int yInSection = y & 0xF;
 
-                section.set(
-                        PacketEvents.getAPI().getServerManager().getVersion().toClientVersion(),
-                        xInChunk,
-                        yInSection,
-                        zInChunk,
-                        wrappedState.getGlobalId()
-                );
+                    if (sectionIndex < 0 || sectionIndex >= sections.length) continue;
+
+                    BaseChunk section = sections[sectionIndex];
+                    if (section == null) continue;
+
+                    BlockData bukkitData = singleBlock.getDataAt(player, loc);
+                    WrappedBlockState wrappedState = WrappedBlockState.getByString(bukkitData.getAsString());
+
+                    section.set(
+                            PacketEvents.getAPI().getServerManager().getVersion().toClientVersion(),
+                            xInChunk,
+                            yInSection,
+                            zInChunk,
+                            wrappedState.getGlobalId()
+                    );
+                }
 
                 continue;
             }

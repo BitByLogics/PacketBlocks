@@ -35,7 +35,7 @@ public class PacketBlockUtil {
         PacketBlockHolder<?, ?> packetBlockHolder = optionalHolder.get();
 
         if (packetBlockHolder instanceof PacketBlock packetBlock) {
-            return packetBlock.getData();
+            return packetBlock.getDataAt(player, location);
         }
 
         if(packetBlockHolder instanceof PacketBlockGroup group) {
@@ -75,7 +75,7 @@ public class PacketBlockUtil {
         PacketBlockHolder<?, ?> packetBlockHolder = optionalHolder.get();
 
         if (packetBlockHolder instanceof PacketBlock packetBlock) {
-            return packetBlock.getData().getMaterial();
+            return packetBlock.getDataAt(player, location).getMaterial();
         }
 
         if(packetBlockHolder instanceof PacketBlockGroup group) {
@@ -130,7 +130,7 @@ public class PacketBlockUtil {
             }
 
             if (packetBlock instanceof PacketBlock singleBlock) {
-                BlockData blockData = singleBlock.getData(player);
+                BlockData blockData = singleBlock.getDataAt(player, block.getLocation());
 
                 RayTraceResult boxResult = BoundingBoxes.rayTraceAt(block, blockData, eye.toVector(), direction, range);
 

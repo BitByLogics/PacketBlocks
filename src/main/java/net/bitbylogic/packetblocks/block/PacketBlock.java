@@ -15,7 +15,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.data.Bisected;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.type.Stairs;
+import org.bukkit.block.data.type.TrapDoor;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -27,6 +30,11 @@ public class PacketBlock implements PacketBlockHolder<BlockData, SinglePacketBlo
     private final ChunkPosition chunk;
 
     private final Location location;
+
+    @Nullable
+    private final WorldPosition upperPosition;
+    @Nullable
+    private final Location upperLocation;
 
     private final DataHandler<BlockData, SinglePacketBlockViewer> dataHandler;
     private final ViewerHandler<BlockData, SinglePacketBlockViewer> viewerHandler;
@@ -59,10 +67,24 @@ public class PacketBlock implements PacketBlockHolder<BlockData, SinglePacketBlo
 
         this.location = location.toBlockLocation();
 
+        if (isTall(blockData)) {
+            this.upperLocation = this.location.clone().add(0, 1, 0);
+            this.upperPosition = WorldPosition.ofBlock(upperLocation);
+        } else {
+            this.upperLocation = null;
+            this.upperPosition = null;
+        }
+
         this.viewerHandler = new ViewerHandler<>(
                 player -> getData(),
                 this::sendUpdate,
-                player -> player.sendBlockChange(this.location, location.getBlock().getBlockData()),
+                player -> {
+                    player.sendBlockChange(this.location, this.location.getBlock().getBlockData());
+
+                    if (upperLocation != null) {
+                        player.sendBlockChange(upperLocation, upperLocation.getBlock().getBlockData());
+                    }
+                },
                 () -> new SinglePacketBlockViewer(getData(), this::getData, breakSpeed)
         );
 
@@ -95,6 +117,61 @@ public class PacketBlock implements PacketBlockHolder<BlockData, SinglePacketBlo
     @Override
     public void sendUpdate(@NonNull Player player) {
         player.sendBlockChange(location, getData(player));
+
+        if (upperLocation == null) {
+            return;
+        }
+
+        player.sendBlockChange(upperLocation, getDataAt(player, upperLocation));
+    }
+
+    /**
+     * Retrieves the block data shown for the given player at a location owned by this block.
+     * For bisected blocks, the upper location resolves to the top half of the block data.
+     *
+     * @param player   the player to resolve data for, can be null
+     * @param location the location within this block
+     * @return the block data for the location
+     */
+    public BlockData getDataAt(@Nullable Player player, @NonNull Location location) {
+        BlockData data = getData(player);
+
+        if (upperPosition == null || !upperPosition.equals(WorldPosition.ofBlock(location))) {
+            return data;
+        }
+
+        if (!isTall(data)) {
+            return upperLocation.getBlock().getBlockData();
+        }
+
+        return getTopHalf(data);
+    }
+
+    /**
+     * Creates the top half variant of the bottom half of a two block tall block.
+     *
+     * @param blockData the bottom half block data, must satisfy {@link #isTall(BlockData)}
+     * @return a copy of the block data with the top half set
+     */
+    public static BlockData getTopHalf(@NonNull BlockData blockData) {
+        Bisected upperData = (Bisected) blockData.clone();
+        upperData.setHalf(Bisected.Half.TOP);
+        return upperData;
+    }
+
+    /**
+     * Checks whether the block data is the bottom half of a two block tall block,
+     * such as a door or tall plant. Stairs and trapdoors are bisected but only one block.
+     *
+     * @param blockData the block data to check
+     * @return true if the data spans two blocks
+     */
+    public static boolean isTall(@NonNull BlockData blockData) {
+        if (!(blockData instanceof Bisected bisected) || blockData instanceof Stairs || blockData instanceof TrapDoor) {
+            return false;
+        }
+
+        return bisected.getHalf() == Bisected.Half.BOTTOM;
     }
 
     /**
@@ -141,7 +218,8 @@ public class PacketBlock implements PacketBlockHolder<BlockData, SinglePacketBlo
 
     @Override
     public boolean existsAt(@NonNull Location location) {
-        return position.equals(WorldPosition.ofBlock(location));
+        WorldPosition other = WorldPosition.ofBlock(location);
+        return position.equals(other) || (upperPosition != null && upperPosition.equals(other));
     }
 
 }

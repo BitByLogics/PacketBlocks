@@ -2,6 +2,7 @@ package net.bitbylogic.packetblocks.group;
 
 import lombok.Getter;
 import lombok.NonNull;
+import net.bitbylogic.packetblocks.block.PacketBlock;
 import net.bitbylogic.packetblocks.block.PacketBlockHolder;
 import net.bitbylogic.packetblocks.block.PacketBlockManager;
 import net.bitbylogic.packetblocks.data.DataHandler;
@@ -45,7 +46,7 @@ public class PacketBlockGroup implements PacketBlockHolder<Map<WorldPosition, Bl
 
         Map<WorldPosition, BlockData> positions = new HashMap<>(size);
 
-        for (Map.Entry<Location, BlockData> entry : blockLocations.entrySet()) {
+        for (Map.Entry<Location, BlockData> entry : expandBisected(blockLocations).entrySet()) {
             Location location = entry.getKey().toBlockLocation();
             WorldPosition worldPosition = WorldPosition.ofBlock(location);
             ChunkPosition chunkPosition = worldPosition.toChunkPosition();
@@ -111,12 +112,24 @@ public class PacketBlockGroup implements PacketBlockHolder<Map<WorldPosition, Bl
      * @param blockData the {@link BlockData} associated with the block at the given location; must not be null
      */
     public void addLocation(@NonNull Location location, @NonNull BlockData blockData) {
+        if (PacketBlock.isTall(blockData)) {
+            Location upperLocation = location.toBlockLocation().add(0, 1, 0);
+
+            if (!getData().containsKey(WorldPosition.ofBlock(upperLocation))) {
+                addLocation(upperLocation, PacketBlock.getTopHalf(blockData));
+            }
+        }
+
         WorldPosition position = WorldPosition.ofBlock(location);
         getData().put(position, blockData);
         cachedLocations.put(position, location);
 
         ChunkPosition chunkPosition = position.toChunkPosition();
-        chunkPositions.computeIfAbsent(chunkPosition, k -> new ArrayList<>()).add(position);
+        List<WorldPosition> chunkList = chunkPositions.computeIfAbsent(chunkPosition, k -> new ArrayList<>());
+
+        if (!chunkList.contains(position)) {
+            chunkList.add(position);
+        }
 
         if (!worldNames.contains(position.worldName())) {
             worldNames.add(position.worldName());
@@ -193,6 +206,62 @@ public class PacketBlockGroup implements PacketBlockHolder<Map<WorldPosition, Bl
 
             player.sendBlockChange(location, location.getBlock().getBlockData());
         });
+    }
+
+    /**
+     * Adds the top half entry for every bottom half of a two block tall block (doors, tall plants)
+     * that doesn't already have an entry above it.
+     *
+     * @param locations the locations and block data to expand
+     * @return a new map including the generated top halves
+     */
+    public static Map<Location, BlockData> expandBisected(@NonNull Map<Location, BlockData> locations) {
+        Map<Location, BlockData> expanded = new LinkedHashMap<>(locations);
+        Set<WorldPosition> positions = new HashSet<>();
+
+        for (Location location : locations.keySet()) {
+            positions.add(WorldPosition.ofBlock(location));
+        }
+
+        for (Map.Entry<Location, BlockData> entry : locations.entrySet()) {
+            if (!PacketBlock.isTall(entry.getValue())) {
+                continue;
+            }
+
+            Location upperLocation = entry.getKey().toBlockLocation().add(0, 1, 0);
+
+            if (!positions.add(WorldPosition.ofBlock(upperLocation))) {
+                continue;
+            }
+
+            expanded.put(upperLocation, PacketBlock.getTopHalf(entry.getValue()));
+        }
+
+        return expanded;
+    }
+
+    /**
+     * Retrieves the location of the top half belonging to the bottom half of a two block tall
+     * block in this group.
+     *
+     * @param location the location of the potential bottom half
+     * @return the upper location, or null if the block there isn't a tall block with a top half in this group
+     */
+    @Nullable
+    public Location getUpperLocation(@NonNull Location location) {
+        BlockData blockData = getData().get(WorldPosition.ofBlock(location));
+
+        if (blockData == null || !PacketBlock.isTall(blockData)) {
+            return null;
+        }
+
+        Location upperLocation = location.toBlockLocation().add(0, 1, 0);
+
+        if (!getData().containsKey(WorldPosition.ofBlock(upperLocation))) {
+            return null;
+        }
+
+        return upperLocation;
     }
 
     public List<BlockState> getBlockStates(@NonNull Player player) {

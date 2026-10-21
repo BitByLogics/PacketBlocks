@@ -64,13 +64,20 @@ public class PacketBlockManager {
 
             blocks.put(packetBlock.getPosition(), packetBlock);
             blockLocations.put(identifier, blocks);
-            return packetBlock;
+        } else {
+            Map<WorldPosition, PacketBlockHolder<?, ?>> newBlocks = new HashMap<>();
+            newBlocks.put(packetBlock.getPosition(), packetBlock);
+
+            blockLocations.put(identifier, newBlocks);
         }
 
-        Map<WorldPosition, PacketBlockHolder<?, ?>> newBlocks = new HashMap<>();
-        newBlocks.put(packetBlock.getPosition(), packetBlock);
+        if (packetBlock.getUpperLocation() != null) {
+            Location upper = packetBlock.getUpperLocation();
+            ChunkPosition upperChunk = ChunkPosition.of(upper.getChunk());
 
-        blockLocations.put(identifier, newBlocks);
+            blockLocations.computeIfAbsent(upperChunk, k -> new HashMap<>()).put(packetBlock.getUpperPosition(), packetBlock);
+        }
+
         return packetBlock;
     }
 
@@ -99,11 +106,13 @@ public class PacketBlockManager {
      * @param locations A map containing block locations and their associated block data. Must not be null.
      */
     public void addBlocksToGroup(@NonNull PacketBlockGroup group, @NonNull Map<Location, BlockData> locations) {
-        group.addLocations(locations);
+        Map<Location, BlockData> expanded = PacketBlockGroup.expandBisected(locations);
 
-        for (Map.Entry<Location, BlockData> entry : locations.entrySet()) {
+        group.addLocations(expanded);
+
+        for (Map.Entry<Location, BlockData> entry : expanded.entrySet()) {
             ChunkPosition chunkPosition = ChunkPosition.of(entry.getKey().getChunk());
-            blockLocations.get(chunkPosition).put(WorldPosition.ofBlock(entry.getKey()), group);
+            blockLocations.computeIfAbsent(chunkPosition, k -> new HashMap<>()).put(WorldPosition.ofBlock(entry.getKey()), group);
         }
     }
 
@@ -115,10 +124,7 @@ public class PacketBlockManager {
      * @param blockData The data representing the block to be added. Must not be null.
      */
     public void addBlockToGroup(@NonNull PacketBlockGroup group, @NonNull Location location, @NonNull BlockData blockData) {
-        group.addLocation(location, blockData);
-
-        ChunkPosition chunkPosition = ChunkPosition.of(location.getChunk());
-        blockLocations.get(chunkPosition).put(WorldPosition.ofBlock(location), group);
+        addBlocksToGroup(group, Map.of(location, blockData));
     }
 
     /**
@@ -128,11 +134,26 @@ public class PacketBlockManager {
      * @param locations  The list of locations to be removed from the group. Must not be null.
      */
     public void removeBlocksFromGroup(@NonNull PacketBlockGroup group, @NonNull List<Location> locations) {
-        group.removeLocations(locations);
+        List<Location> expanded = new ArrayList<>(locations);
 
         for (Location location : locations) {
-            ChunkPosition chunkPosition = ChunkPosition.of(location.getChunk());
-            blockLocations.get(chunkPosition).remove(WorldPosition.ofBlock(location));
+            Location upperLocation = group.getUpperLocation(location);
+
+            if (upperLocation != null && !expanded.contains(upperLocation)) {
+                expanded.add(upperLocation);
+            }
+        }
+
+        group.removeLocations(expanded);
+
+        for (Location location : expanded) {
+            Map<WorldPosition, PacketBlockHolder<?, ?>> blocks = blockLocations.get(ChunkPosition.of(location.getChunk()));
+
+            if (blocks == null) {
+                continue;
+            }
+
+            blocks.remove(WorldPosition.ofBlock(location));
         }
     }
 
@@ -143,10 +164,7 @@ public class PacketBlockManager {
      * @param location The Location of the block to be removed. Must not be null.
      */
     public void removeBlockFromGroup(@NonNull PacketBlockGroup group, @NonNull Location location) {
-        group.removeLocation(location);
-
-        ChunkPosition chunkPosition = ChunkPosition.of(location.getChunk());
-        blockLocations.get(chunkPosition).remove(WorldPosition.ofBlock(location));
+        removeBlocksFromGroup(group, List.of(location));
     }
 
     /**
@@ -164,7 +182,7 @@ public class PacketBlockManager {
         }
 
         if (packetBlock instanceof PacketBlock singleBlock) {
-            return Optional.of(singleBlock.getData(player));
+            return Optional.of(singleBlock.getDataAt(player, location));
         }
 
         if (!(packetBlock instanceof PacketBlockGroup group)) {
@@ -201,6 +219,15 @@ public class PacketBlockManager {
             }
 
             blocks.remove(singleBlock.getPosition());
+
+            if (singleBlock.getUpperLocation() != null) {
+                Map<WorldPosition, PacketBlockHolder<?, ?>> upperBlocks = blockLocations.get(ChunkPosition.of(singleBlock.getUpperLocation().getChunk()));
+
+                if (upperBlocks != null) {
+                    upperBlocks.remove(singleBlock.getUpperPosition());
+                }
+            }
+
             return;
         }
 
